@@ -3,20 +3,37 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Welloh Trading Simulator API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: portfolio
+    description: Portfolio and holdings management
+  - name: transactions
+    description: Trade history
+  - name: watchlist
+    description: Watchlist management
+  - name: stocks
+    description: Stock data and quotes
+  - name: leaderboard
+    description: Rankings and scores
+  - name: analysis
+    description: AI financial analysis history
+  - name: gemini
+    description: Gemini AI chat and analysis
+  - name: education
+    description: Education content
+  - name: users
+    description: User profile management
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +41,427 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /portfolio:
+    get:
+      operationId: getPortfolio
+      tags: [portfolio]
+      summary: Get current user portfolio with holdings
+      responses:
+        "200":
+          description: Portfolio with holdings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Portfolio"
+        "404":
+          description: Portfolio not found
+
+  /portfolio/summary:
+    get:
+      operationId: getPortfolioSummary
+      tags: [portfolio]
+      summary: Get portfolio summary stats (total value, PnL, win rate)
+      responses:
+        "200":
+          description: Portfolio summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioSummary"
+
+  /portfolio/trade:
+    post:
+      operationId: executeTrade
+      tags: [portfolio]
+      summary: Execute a buy or sell trade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TradeRequest"
+      responses:
+        "200":
+          description: Trade executed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TradeResult"
+        "400":
+          description: Invalid trade (insufficient funds, shares, etc)
+
+  /transactions:
+    get:
+      operationId: listTransactions
+      tags: [transactions]
+      summary: List all transactions for current user
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transaction"
+
+  /watchlist:
+    get:
+      operationId: getWatchlist
+      tags: [watchlist]
+      summary: Get user watchlist items
+      responses:
+        "200":
+          description: Watchlist items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WatchlistItem"
+    post:
+      operationId: addToWatchlist
+      tags: [watchlist]
+      summary: Add stock to watchlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WatchlistItemInput"
+      responses:
+        "201":
+          description: Added to watchlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchlistItem"
+
+  /watchlist/{id}:
+    delete:
+      operationId: removeFromWatchlist
+      tags: [watchlist]
+      summary: Remove stock from watchlist
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Removed
+
+  /stocks/quote:
+    get:
+      operationId: getStockQuote
+      tags: [stocks]
+      summary: Get simulated stock quote for a ticker
+      parameters:
+        - name: ticker
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: exchange
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stock quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockQuote"
+
+  /stocks/search:
+    get:
+      operationId: searchStocks
+      tags: [stocks]
+      summary: Search stocks by name or ticker
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: exchange
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockSearchResult"
+
+  /stocks/markets:
+    get:
+      operationId: getMarketOverview
+      tags: [stocks]
+      summary: Get market overview for all major exchanges
+      responses:
+        "200":
+          description: Market overview
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MarketIndex"
+
+  /leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [leaderboard]
+      summary: Get global leaderboard
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Leaderboard entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+
+  /leaderboard/me:
+    get:
+      operationId: getMyRank
+      tags: [leaderboard]
+      summary: Get current user rank and score
+      responses:
+        "200":
+          description: Current user rank
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaderboardEntry"
+
+  /analysis:
+    get:
+      operationId: listAnalyses
+      tags: [analysis]
+      summary: List user's saved analyses
+      responses:
+        "200":
+          description: List of analyses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnalysisRecord"
+    post:
+      operationId: saveAnalysis
+      tags: [analysis]
+      summary: Save an analysis result
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveAnalysisBody"
+      responses:
+        "201":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisRecord"
+
+  /analysis/{id}:
+    delete:
+      operationId: deleteAnalysis
+      tags: [analysis]
+      summary: Delete an analysis record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /gemini/analyze:
+    post:
+      operationId: analyzeStock
+      tags: [gemini]
+      summary: Run AI analysis on a stock (streaming SSE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeStockBody"
+      responses:
+        "200":
+          description: SSE stream of analysis
+          content:
+            text/event-stream: {}
+
+  /gemini/mentor:
+    post:
+      operationId: mentorChat
+      tags: [gemini]
+      summary: Chat with AI mentor (streaming SSE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MentorChatBody"
+      responses:
+        "200":
+          description: SSE stream of mentor response
+          content:
+            text/event-stream: {}
+
+  /gemini/conversations:
+    get:
+      operationId: listGeminiConversations
+      tags: [gemini]
+      summary: List mentor conversations
+      responses:
+        "200":
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GeminiConversation"
+    post:
+      operationId: createGeminiConversation
+      tags: [gemini]
+      summary: Create a new mentor conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGeminiConversationBody"
+      responses:
+        "201":
+          description: Created conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeminiConversation"
+
+  /gemini/conversations/{id}:
+    get:
+      operationId: getGeminiConversation
+      tags: [gemini]
+      summary: Get conversation with messages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Conversation with messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeminiConversationWithMessages"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteGeminiConversation
+      tags: [gemini]
+      summary: Delete a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /gemini/conversations/{id}/messages:
+    post:
+      operationId: sendGeminiMessage
+      tags: [gemini]
+      summary: Send a message (SSE stream)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendGeminiMessageBody"
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream: {}
+
+  /users/profile:
+    get:
+      operationId: getProfile
+      tags: [users]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+    put:
+      operationId: updateProfile
+      tags: [users]
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileBody"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +472,502 @@ components:
       required:
         - status
 
+    Portfolio:
+      type: object
+      properties:
+        id:
+          type: integer
+        cashBalance:
+          type: number
+        initialCapital:
+          type: number
+        holdings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Holding"
+      required:
+        - id
+        - cashBalance
+        - initialCapital
+        - holdings
+
+    Holding:
+      type: object
+      properties:
+        id:
+          type: integer
+        ticker:
+          type: string
+        exchange:
+          type: string
+        shares:
+          type: number
+        purchasePrice:
+          type: number
+        currentPrice:
+          type: number
+        currentValue:
+          type: number
+        gainLoss:
+          type: number
+        gainLossPct:
+          type: number
+      required:
+        - id
+        - ticker
+        - exchange
+        - shares
+        - purchasePrice
+        - currentPrice
+        - currentValue
+        - gainLoss
+        - gainLossPct
+
+    PortfolioSummary:
+      type: object
+      properties:
+        totalValue:
+          type: number
+        cashBalance:
+          type: number
+        holdingsValue:
+          type: number
+        totalGainLoss:
+          type: number
+        totalGainLossPct:
+          type: number
+        initialCapital:
+          type: number
+        winRate:
+          type: number
+        totalTrades:
+          type: integer
+      required:
+        - totalValue
+        - cashBalance
+        - holdingsValue
+        - totalGainLoss
+        - totalGainLossPct
+        - initialCapital
+        - winRate
+        - totalTrades
+
+    TradeRequest:
+      type: object
+      properties:
+        ticker:
+          type: string
+        exchange:
+          type: string
+        type:
+          type: string
+          enum: [BUY, SELL]
+        shares:
+          type: number
+        price:
+          type: number
+      required:
+        - ticker
+        - exchange
+        - type
+        - shares
+        - price
+
+    TradeResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        transaction:
+          $ref: "#/components/schemas/Transaction"
+        newCashBalance:
+          type: number
+      required:
+        - success
+        - message
+        - newCashBalance
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: integer
+        ticker:
+          type: string
+        exchange:
+          type: string
+        type:
+          type: string
+        shares:
+          type: number
+        price:
+          type: number
+        total:
+          type: number
+        fees:
+          type: number
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - id
+        - ticker
+        - exchange
+        - type
+        - shares
+        - price
+        - total
+        - fees
+        - timestamp
+
+    WatchlistItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        ticker:
+          type: string
+        exchange:
+          type: string
+        addedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - ticker
+        - exchange
+        - addedAt
+
+    WatchlistItemInput:
+      type: object
+      properties:
+        ticker:
+          type: string
+        exchange:
+          type: string
+      required:
+        - ticker
+        - exchange
+
+    StockQuote:
+      type: object
+      properties:
+        ticker:
+          type: string
+        exchange:
+          type: string
+        price:
+          type: number
+        change:
+          type: number
+        changePct:
+          type: number
+        volume:
+          type: integer
+        high:
+          type: number
+        low:
+          type: number
+        open:
+          type: number
+        previousClose:
+          type: number
+        companyName:
+          type: string
+        currency:
+          type: string
+        historicalData:
+          type: array
+          items:
+            $ref: "#/components/schemas/PricePoint"
+      required:
+        - ticker
+        - exchange
+        - price
+        - change
+        - changePct
+        - companyName
+        - currency
+        - historicalData
+
+    PricePoint:
+      type: object
+      properties:
+        date:
+          type: string
+        price:
+          type: number
+        volume:
+          type: integer
+      required:
+        - date
+        - price
+
+    StockSearchResult:
+      type: object
+      properties:
+        ticker:
+          type: string
+        exchange:
+          type: string
+        companyName:
+          type: string
+        sector:
+          type: string
+        currency:
+          type: string
+      required:
+        - ticker
+        - exchange
+        - companyName
+        - currency
+
+    MarketIndex:
+      type: object
+      properties:
+        name:
+          type: string
+        exchange:
+          type: string
+        value:
+          type: number
+        change:
+          type: number
+        changePct:
+          type: number
+        region:
+          type: string
+        currency:
+          type: string
+      required:
+        - name
+        - exchange
+        - value
+        - change
+        - changePct
+        - region
+        - currency
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        userId:
+          type: string
+        displayName:
+          type: string
+        score:
+          type: number
+        totalReturn:
+          type: number
+        returnPct:
+          type: number
+        winRate:
+          type: number
+        totalTrades:
+          type: integer
+        sharpeRatio:
+          type: number
+        country:
+          type: string
+      required:
+        - rank
+        - userId
+        - displayName
+        - score
+        - totalReturn
+        - returnPct
+        - winRate
+        - totalTrades
+        - sharpeRatio
+
+    AnalysisRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        ticker:
+          type: string
+        companyName:
+          type: string
+        analysisType:
+          type: string
+        summary:
+          type: string
+        data:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - ticker
+        - companyName
+        - analysisType
+        - summary
+        - createdAt
+
+    SaveAnalysisBody:
+      type: object
+      properties:
+        ticker:
+          type: string
+        companyName:
+          type: string
+        analysisType:
+          type: string
+        summary:
+          type: string
+        data:
+          type: object
+      required:
+        - ticker
+        - companyName
+        - analysisType
+        - summary
+
+    AnalyzeStockBody:
+      type: object
+      properties:
+        ticker:
+          type: string
+        exchange:
+          type: string
+        companyName:
+          type: string
+        analysisType:
+          type: string
+          enum: [full, comparison, quick]
+        compareTo:
+          type: string
+      required:
+        - ticker
+        - exchange
+        - companyName
+        - analysisType
+
+    MentorChatBody:
+      type: object
+      properties:
+        message:
+          type: string
+        conversationId:
+          type: integer
+        context:
+          type: string
+      required:
+        - message
+
+    GeminiConversation:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - createdAt
+
+    GeminiConversationWithMessages:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeminiMessage"
+      required:
+        - id
+        - title
+        - createdAt
+        - messages
+
+    GeminiMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        role:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - conversationId
+        - role
+        - content
+        - createdAt
+
+    CreateGeminiConversationBody:
+      type: object
+      properties:
+        title:
+          type: string
+      required:
+        - title
+
+    SendGeminiMessageBody:
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        country:
+          type: string
+        institution:
+          type: string
+        bio:
+          type: string
+        level:
+          type: integer
+        badges:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - displayName
+        - level
+
+    UpdateProfileBody:
+      type: object
+      properties:
+        displayName:
+          type: string
+        country:
+          type: string
+        institution:
+          type: string
+        bio:
+          type: string
