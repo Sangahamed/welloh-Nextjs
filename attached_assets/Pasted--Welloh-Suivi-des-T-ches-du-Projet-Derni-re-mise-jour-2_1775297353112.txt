@@ -1,0 +1,256 @@
+# Welloh – Suivi des Tâches du Projet
+
+> Dernière mise à jour : 2026-04-01
+> Référence : Documentation complète du projet (attached_assets)
+
+---
+
+## IMPORTANT - Configuration Supabase (CORRIGEE)
+
+### Bug Corrige (2026-04-01)
+- [x] Client Supabase mis a jour pour supporter VITE_* et NEXT_PUBLIC_* et SUPABASE_*
+- [x] Variables VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY ajoutees a .env.development.local
+- [x] Validation JWT ajoutee dans supabaseClient.ts (verifie que la cle commence par 'eyJ')
+- [x] Anciennes cles invalides retirees de .env
+- [x] Plugin Vite htmlEnvPlugin ajoute pour injecter les variables d'environnement dans index.html
+- [x] Support window.__ENV__ pour injection runtime des variables
+- [x] vite.config.ts mis a jour avec define{} pour exposer les variables a import.meta.env
+
+### Variables d'environnement configurees
+- `VITE_SUPABASE_URL` - URL du projet Supabase (pour Vite)
+- `VITE_SUPABASE_ANON_KEY` - Cle publique anon JWT (pour Vite)
+- `NEXT_PUBLIC_SUPABASE_URL` - URL du projet Supabase (pour Next.js)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Cle publique anon JWT (pour Next.js)
+- `SUPABASE_SERVICE_ROLE_KEY` - Cle de service (cote serveur uniquement)
+
+### Checklist avant developpement
+
+1. **Auth Supabase**
+   - [ ] Verifier Auth > Providers > Email active
+   - [ ] Verifier Auth > URL redirect configuree
+   - [ ] Table `profiles` > RLS configure correctement
+
+2. **Securite**
+   - Ne JAMAIS exposer `DATABASE_URL` ou `SUPABASE_SERVICE_ROLE_KEY` cote client
+   - Utiliser uniquement `VITE_*` ou `NEXT_PUBLIC_*` pour le frontend
+
+3. **Architecture**
+   - Utiliser le client Supabase browser pour le frontend
+   - Le fichier `lib/supabaseClient.ts` gere automatiquement les deux prefixes
+
+---
+
+## Prochaines Taches Prioritaires (Code Ready)
+
+### 1. WebSocket CoinCap + Binance (Donnees temps reel) - TERMINE
+- [x] Service WebSocket cree (`services/websocketService.ts`)
+- [x] Support CoinCap (15 cryptos principales)
+- [x] Support Binance (ticker, order book, trades)
+- [x] Hooks React: `useRealtimePrice`, `useOrderBook`, `useRealtimeTrades`, `useWebSocketConnection`
+- [x] Composant `RealtimePriceDisplay.tsx` avec flash sur changement de prix
+- [x] Composant `OrderBookDisplay.tsx` avec carnet d'ordres live et trades recents
+- [x] Composant `CryptoChartView.tsx` avec graphique temps reel
+- [x] Reconnexion automatique avec backoff exponentiel
+
+### 2. Graphiques Avances - TERMINE
+- [x] Service indicateurs techniques (`services/technicalIndicators.ts`)
+  - SMA, EMA, RSI, MACD, Bollinger Bands, Stochastic, ATR, VWAP
+  - Generation automatique de signaux (achat/vente)
+- [x] Composant CandlestickChart (`components/CandlestickChart.tsx`)
+  - Graphique en chandeliers japonais interactif
+  - Superposition d'indicateurs (SMA, EMA, Bollinger, VWAP)
+  - Volume avec barres colorees
+  - Crosshair + info-bulle OHLCV
+  - Marqueurs de signaux sur le graphique
+- [x] Composant TechnicalIndicatorPanel (`components/TechnicalIndicatorPanel.tsx`)
+  - RSI avec zones surachat/survente
+  - MACD avec histogramme
+  - Stochastic %K/%D
+  - ATR (Average True Range)
+- [x] Composant AdvancedTradingChart (`components/AdvancedTradingChart.tsx`)
+  - Vue TradingView-style complete
+  - Selection de timeframe (1m, 5m, 15m, 1h, 4h, 1d, 1w)
+  - Panneaux d'indicateurs configurables
+  - Affichage des signaux recents
+
+### 3. Calcul PnL + Frais + Slippage - DEJA FAIT
+- [x] Frais de transaction (0.1% commission)
+- [x] Slippage simule (0.05%)
+- [x] Calcul automatique du cout total avec frais
+- (Implemente dans StockChartView.tsx)
+
+### 4. Indicateurs Techniques (RSI, MACD, SMA, EMA, Bollinger) - TERMINE
+- [x] Tous les indicateurs implementes dans `services/technicalIndicators.ts`
+- [x] Affichage interactif dans les graphiques
+
+### 5. Order Book Simule - TERMINE
+- [x] Carnet d'ordres temps reel via Binance WebSocket
+- [x] Visualisation bid/ask avec barres de profondeur
+- [x] Calcul et affichage du spread
+- [x] Trades recents en temps reel
+
+---
+
+## ✅ PHASE 1 – Base & Trading (TERMINÉE)
+
+| Tâche | Statut | Fichier(s) |
+|-------|--------|------------|
+| Page d'accueil (Landing) | ✅ Fait | `LandingView.tsx` |
+| Authentification (connexion / inscription) | ✅ Fait | `LoginView.tsx`, `SignUpView.tsx`, `AuthContext.tsx` |
+| Profils utilisateurs | ✅ Fait | `ProfileView.tsx`, `lib/database.ts` |
+| Portefeuille virtuel (capital initial 100 000 $) | ✅ Fait | `DashboardView.tsx`, `lib/database.ts` |
+| Ordres de marché (achat / vente) | ✅ Fait | `StockChartView.tsx` |
+| Ordres limite & stop-loss | ✅ Fait | `StockChartView.tsx` |
+| Historique des transactions | ✅ Fait | `DashboardView.tsx`, `HistoryPanel.tsx` |
+| Watchlist personnalisée | ✅ Fait | `WatchlistPanel.tsx` |
+| Aperçu des marchés mondiaux & africains | ✅ Fait | `MarketOverview.tsx` |
+| Graphique historique d'une action (30 jours) | ✅ Fait | `StockChartView.tsx` |
+| Analyse financière IA (Gemini) | ✅ Fait | `AnalysisView.tsx`, `services/geminiService.ts` |
+| Comparaison d'entreprises côte-à-côte | ✅ Fait | `ComparisonView.tsx` |
+| Actualités financières associées | ✅ Fait | `FinancialNews.tsx` |
+| Sauvegarde historique des analyses | ✅ Fait | `lib/database.ts` |
+| Mentor IA (chatbot pédagogique streaming) | ✅ Fait | `StrategyView.tsx` |
+| Hub éducatif (parcours structurés) | ✅ Fait | `EducationView.tsx`, `EducationModal.tsx` |
+| Marchés de prédiction (création + paris) | ✅ Fait | `PredictionsView.tsx` |
+| Classement (leaderboard) + système de ligues | ✅ Fait | `LeaderboardView.tsx` |
+| Score composite (PnL 50% + Sharpe 30% + WinRate 20%) | ✅ Fait | `LeaderboardView.tsx` |
+| Dashboard Administrateur (version basique) | ✅ Fait | `AdminDashboardView.tsx` |
+| Appels d'offres publics africains | ✅ Fait | `PublicTendersView.tsx` |
+| Alertes sur métriques financières | ✅ Fait | `AlertsPanel.tsx` |
+| Notifications de montée de niveau | ✅ Fait | `LevelUpNotification.tsx` |
+| Déploiement Replit + Supabase | ✅ Fait | `lib/supabaseClient.ts`, `lib/database.ts` |
+
+---
+
+## 🔄 PHASE 2 – Prédictions & Gamification (EN COURS)
+
+| Tâche | Statut | Fichier(s) | Notes |
+|-------|--------|------------|-------|
+| Ordres limite & stop-loss | ✅ Fait | `StockChartView.tsx` | |
+| **Ordre take-profit** | ✅ Fait | `StockChartView.tsx` | Ajouté |
+| **Frais de transaction & slippage simulés** | ✅ Fait | `StockChartView.tsx` | Ajouté (0.1% frais, 0.05% slippage) |
+| **Feedback IA post-trade (Gemini)** | ✅ Fait | `StockChartView.tsx`, `geminiService.ts` | Ajouté |
+| **Système de badges & achievements** | ✅ Fait | `BadgesView.tsx`, `types.ts` | Ajouté |
+| **Export CSV des transactions** | ✅ Fait | `DashboardView.tsx` | Ajouté |
+| **Streaks de trading** | ✅ Fait | `DashboardView.tsx` | Jours consécutifs + quick stats bar |
+| **Résolution des prédictions (créateur)** | ✅ Fait | `PredictionsView.tsx`, `lib/database.ts` | Bouton + modal de résolution |
+| Cohortes « timeless » | ✅ Fait | `LeaderboardView.tsx` | Grouper par date d'inscription |
+| Flux d'activité temps réel (Social Feed) | ✅ Fait | `ActivityFeed.tsx` | Supabase Realtime |
+| Carnet d'ordres par prédiction | ✅ Fait | `PredictionsView.tsx` | Order book implémenté dans modal détails |
+| Chat en temps réel par prédiction | ✅ Fait | `PredictionChat.tsx` | Supabase Realtime |
+
+---
+
+## 📋 PHASE 3 – Talent ID & Social (PLANIFIÉE)
+
+| **Système d'abonnement (Follow/Followers)** | ✅ Fait | `ProfileView.tsx`, `database.ts` |
+| **Profils publics détaillés** | ✅ Fait | `ProfileView.tsx` |
+| **Copie de portefeuilles (social trading)** | ✅ Fait | `ProfileView.tsx` | Simulation UI + Toasts |
+| **Salles de trading virtuelles (groupes)** | ✅ Fait | `TradingRoomsView.tsx`, `database: trading_rooms` | Chat temps réel Supabase, filtres focus |
+| Système de mentorat (mentors élite) | ❌ Non fait | |
+| **Matrice de compétences multi-dimensions** | ✅ Fait | `ProfileView.tsx` | 5 dimensions (diversification, activité, risque, rendement, constance) |
+| **Certification des traders** | ✅ Fait | `AdminDashboardView.tsx`, `database.ts` | Badge/diplôme vérifiable |
+| Portail recruteur (premium) | ❌ Non fait | Vue des talents identifiés |
+
+---
+
+## 🤖 PHASE 4 – IA & Scale (PLANIFIÉE)
+
+| Tâche | Statut | Notes |
+|-------|--------|-------|
+| Feedback IA post-trade (Gemini) | ✅ Fait | Note A-F + conseils |
+| **Quiz personnalisés générés par IA** | ✅ Fait | `QuizView.tsx`, `geminiService.ts` | 6 thèmes × 3 niveaux, questions + explications Gemini |
+| Amélioration du chatbot mentor | ❌ Non fait | Mémoire conversationnelle |
+| Microservices Go (leaderboard) | ❌ Non fait | Architecture future |
+| Microservices Python (analytics) | ❌ Non fait | Architecture future |
+| Kafka pour event streaming | ❌ Non fait | Architecture future |
+| Application mobile React Native | ❌ Non fait | Roadmap long terme |
+
+---
+
+## 🛠️ PHASE 5 – Dashboard Admin & Outils (À VENIR)
+
+| Tâche | Statut | Notes |
+|-------|--------|-------|
+| **Dashboard admin amélioré (KPIs temps réel)** | ✅ Fait | `AdminDashboardView.tsx` |
+| **Gestion des utilisateurs (suspension, rôle, reset, verify)** | ✅ Fait | `AdminDashboardView.tsx`, `database.ts` | Actions avancées intégrées |
+| **Modération des prédictions (file de validation)** | ✅ Fait | `PredictionsView.tsx` |
+| **Gestion des signalements (reports)** | ✅ Fait | `AdminDashboardView.tsx`, `database.ts` | File de modération active |
+| **Feature flags dynamiques** | ✅ Fait | `FeatureFlagsView.tsx`, `database: feature_flags` | CRUD complet, toggle optimiste, filtre/recherche |
+| Configuration globale (system_settings) | ❌ Non fait | |
+| Tickets de support intégrés | ❌ Non fait | Tables `support_tickets` en BDD |
+| Health dashboard (état des services) | ❌ Non fait | |
+| **Journal d'audit des actions admin** | ✅ Fait | `AdminDashboardView.tsx`, `database.ts` |
+| **Export avancé (CSV, Excel, PDF)** | ✅ Fait | `AdminDashboardView.tsx` | CSV + PDF (Analyses) |
+| Rapports automatiques (scheduler) | ❌ Non fait | |
+| Intégration Metabase / Superset | ❌ Non fait | BI externe |
+
+---
+
+## 💡 SUGGESTIONS D'AMÉLIORATION
+
+### Priorité Haute
+1. **| Tailwind CSS via PostCSS | ✅ Fait | `package.json`, `index.css` | Remplacer le CDN utilisé en développement |)**
+2. **Remplacer les `alert()` natifs** par des toasts/notifications stylisées (UX bien meilleure) - ✅ Fait
+3. **Supabase Realtime** pour le chat des prédictions et le flux d'activité (déjà dans la stack)
+4. **Résolution automatique des prédictions expirées** (cron job ou trigger Supabase)
+
+### Priorité Moyenne
+5. **2FA pour les administrateurs** (sécurité renforcée — mentionné dans la doc)
+6. **OAuth Google / LinkedIn** (inscription simplifiée)
+7. **Export PDF des analyses financières** (valeur ajoutée pour les utilisateurs pro) - ✅ Fait
+8. **Mode de comparaison de portefeuilles** (comparer son évolution vs les pairs de sa cohorte) - ✅ Fait
+9. **Alertes de prix en temps réel** (via Supabase Realtime ou polling intelligent)
+10. **Internationalisation (i18n)** (EN / FR au minimum, vu la cible africaine multilingue)
+
+### Priorité Basse / Long Terme
+11. **Progressive Web App (PWA)** en attendant l'app mobile
+12. **Intégration Polygon.io** pour des données de marché réelles (actuellement simulées par Gemini)
+13. **Anonymisation RGPD** (outil de suppression/export des données personnelles)
+14. **Scoring ESG** des entreprises dans l'analyse (valeur différenciante pour les marchés africains)
+15. **Mode "Paper Trading compétitif"** — tournois à durée limitée avec réinitialisation du portefeuille
+
+---
+
+## 📊 RÉSUMÉ DE PROGRESSION
+
+| Phase | Tâches totales | Faites | % |
+|-------|---------------|--------|---|
+| Phase 1 | 24 | 24 | 100% |
+| Phase 2 | 12 | 12 | 100% |
+| Phase 3 | 8 | 6 | 75% |
+| Phase 4 | 7 | 2 | 28% |
+| Phase 5 | 12 | 8 | 67% |
+| **Total** | **63** | **52** | **83%** |
+
+---
+
+## Nouveaux Composants Ajoutes (2026-04-01 — Session 2)
+
+### Services
+- `services/websocketService.ts` - WebSocket temps reel (CoinCap + Binance)
+- `services/technicalIndicators.ts` - Calculs d'indicateurs techniques
+
+### Composants
+- `components/RealtimePriceDisplay.tsx` - Affichage prix temps reel
+- `components/OrderBookDisplay.tsx` - Carnet d'ordres live
+- `components/CryptoChartView.tsx` - Vue crypto temps reel
+- `components/CandlestickChart.tsx` - Graphique en chandeliers
+- `components/TechnicalIndicatorPanel.tsx` - Panneaux RSI/MACD/Stoch
+- `components/AdvancedTradingChart.tsx` - Vue trading complete
+
+### Composants Ajoutes (Session 2)
+- `components/TradingRoomsView.tsx` - Salles de trading virtuelles avec chat temps reel
+- `components/FeatureFlagsView.tsx` - Gestion des feature flags (CRUD + toggle)
+
+### Routes Ajoutees
+- `#trading-rooms` - Salles de trading (nav: "Salles")
+- `#feature-flags` - Feature flags admin (nav admin: "Flags")
+
+### Base de donnees (migration a executer)
+- `supabase/migrations/20260401_trading_rooms_feature_flags.sql`
+  - Table `trading_rooms` (salles publiques/privees)
+  - Table `trading_room_members` (membres + roles)
+  - Table `trading_room_messages` (messages + Realtime)
+  - Table `feature_flags` (flags dynamiques)
+  - RLS policies pour toutes les tables
