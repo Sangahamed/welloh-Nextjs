@@ -9,10 +9,10 @@ export interface UserAccount {
   id: string;
   email?: string;
   fullName: string;
-  avatarUrl?: string;
-  bio?: string;
-  country?: string;
-  institution?: string;
+  avatarUrl?: string | null;
+  bio?: string | null;
+  country?: string | null;
+  institution?: string | null;
   role: string;
   league: string;
   level: number;
@@ -23,6 +23,13 @@ export interface UserAccount {
   analysisHistory: HistoryItem[];
   alerts: Alert[];
   createdAt: string;
+  // Champs supplémentaires de la base de données réelle
+  isSuspended?: boolean;
+  isVerified?: boolean;
+  followingCount?: number;
+  followersCount?: number;
+  cashBalance?: string;
+  initialCapital?: string;
 }
 
 export interface HistoryItem {
