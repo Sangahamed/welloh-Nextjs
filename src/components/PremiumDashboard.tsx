@@ -1,19 +1,36 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useUser, useClerk } from '@clerk/nextjs';
-import Link from 'next/link';
+import React, { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import Link from "next/link";
 import {
-  Search, Bell,
-  TrendingUp, BarChart2,
-  ArrowUpRight, ArrowDownRight, Activity,
-  Clock, Wallet, Briefcase, ChevronRight,
-  LayoutDashboard, Star, BrainCircuit, MessageSquare,
-  History, Trophy, GraduationCap, User, LogOut
-} from 'lucide-react';
+  Search,
+  Bell,
+  TrendingUp,
+  BarChart2,
+  ArrowUpRight,
+  ArrowDownRight,
+  Activity,
+  Wallet,
+  Briefcase,
+  LayoutDashboard,
+  Star,
+  BrainCircuit,
+  MessageSquare,
+  History,
+  Trophy,
+  GraduationCap,
+  User,
+  LogOut,
+  ChevronRight,
+  Settings,
+  Menu,
+  X,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // ────────────────────────────────────────────────────────────
-// DYNAMIC HOOKS
+// DATA HOOKS
 // ────────────────────────────────────────────────────────────
 const usePortfolio = () => {
   const [data, setData] = useState<any>(null);
@@ -21,7 +38,7 @@ const usePortfolio = () => {
 
   const fetchPortfolio = async () => {
     try {
-      const resp = await fetch('/api/portfolio/summary');
+      const resp = await fetch("/api/portfolio/summary");
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const json = await resp.json();
       setData(json);
@@ -45,52 +62,110 @@ const useHistory = () => {
   const [history, setHistory] = useState<any[]>([]);
   const fetchHistory = async () => {
     try {
-      const resp = await fetch('/api/transactions?limit=10');
+      const resp = await fetch("/api/transactions?limit=10");
       if (!resp.ok) return;
       const json = await resp.json();
       if (Array.isArray(json)) setHistory(json);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
   };
-  useEffect(() => { fetchHistory(); }, []);
+  useEffect(() => {
+    fetchHistory();
+  }, []);
   return { history, refresh: fetchHistory };
 };
 
 // ────────────────────────────────────────────────────────────
-// SHARED COMPONENTS
+// CHART COMPONENT
 // ────────────────────────────────────────────────────────────
 const CandlestickChart = ({ data }: { data: any[] }) => {
-  const W = 700, H = 260;
-  const PAD = { top: 10, right: 10, bottom: 24, left: 0 };
+  const W = 700,
+    H = 220;
+  const PAD = { top: 10, right: 10, bottom: 20, left: 0 };
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top - PAD.bottom;
 
-  if (!data || data.length === 0) return <div className="w-full h-full flex items-center justify-center text-slate-500 text-[10px] animate-pulse">SYNCING WITH MARKET FEEDS...</div>;
+  if (!data || data.length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+        Loading market data...
+      </div>
+    );
+  }
 
-  const allPrices = data.flatMap(c => [c.high, c.low]);
+  const allPrices = data.flatMap((c) => [c.high, c.low]);
   const minP = Math.min(...allPrices) * 0.9995;
   const maxP = Math.max(...allPrices) * 1.0005;
-  const range = (maxP - minP) || 1;
+  const range = maxP - minP || 1;
 
   const toY = (p: number) => PAD.top + ((maxP - p) / range) * chartH;
   const candleW = chartW / data.length;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="none">
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="w-full h-full"
+      preserveAspectRatio="none"
+    >
+      {/* Grid lines */}
       {[0, 0.25, 0.5, 0.75, 1].map((t, i) => (
-        <line key={i} x1={PAD.left} y1={PAD.top + t * chartH} x2={W - PAD.right} y2={PAD.top + t * chartH} stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+        <line
+          key={i}
+          x1={PAD.left}
+          y1={PAD.top + t * chartH}
+          x2={W - PAD.right}
+          y2={PAD.top + t * chartH}
+          stroke="var(--border)"
+          strokeWidth="1"
+          strokeOpacity="0.5"
+        />
       ))}
+      {/* Candles */}
       {data.map((c, i) => {
         const x = PAD.left + i * candleW + candleW / 2;
-        const color = c.close >= c.open ? '#00F5A0' : '#FF4D4D';
+        const isUp = c.close >= c.open;
+        const color = isUp ? "var(--accent)" : "var(--destructive)";
         return (
           <g key={i}>
-            <line x1={x} y1={toY(c.high)} x2={x} y2={toY(c.low)} stroke={color} strokeWidth="1" opacity="0.6" />
-            <rect x={x - candleW * 0.3} y={toY(Math.max(c.open, c.close))} width={candleW * 0.6} height={Math.max(1, Math.abs(toY(c.open) - toY(c.close)))} fill={color} opacity="0.8" rx="1" />
+            <line
+              x1={x}
+              y1={toY(c.high)}
+              x2={x}
+              y2={toY(c.low)}
+              stroke={color}
+              strokeWidth="1"
+              opacity="0.6"
+            />
+            <rect
+              x={x - candleW * 0.3}
+              y={toY(Math.max(c.open, c.close))}
+              width={candleW * 0.6}
+              height={Math.max(1, Math.abs(toY(c.open) - toY(c.close)))}
+              fill={color}
+              opacity="0.9"
+              rx="1"
+            />
           </g>
         );
       })}
-      <rect x={W - 75} y={toY(data[data.length - 1].close) - 10} width={75} height={20} rx="4" fill="#00F5A0" />
-      <text x={W - 37} y={toY(data[data.length - 1].close) + 4} fill="#000" fontSize="9" textAnchor="middle" fontWeight="900">
+      {/* Current price label */}
+      <rect
+        x={W - 70}
+        y={toY(data[data.length - 1].close) - 10}
+        width={60}
+        height={20}
+        rx="4"
+        fill="var(--accent)"
+      />
+      <text
+        x={W - 40}
+        y={toY(data[data.length - 1].close) + 4}
+        fill="var(--accent-foreground)"
+        fontSize="10"
+        textAnchor="middle"
+        fontWeight="600"
+      >
         {data[data.length - 1].close.toFixed(2)}
       </text>
     </svg>
@@ -98,64 +173,118 @@ const CandlestickChart = ({ data }: { data: any[] }) => {
 };
 
 // ────────────────────────────────────────────────────────────
-// MAIN PANELS
+// HELPERS
 // ────────────────────────────────────────────────────────────
 const fmt = (n: number | undefined | null) =>
-  n != null ? n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
+  n != null
+    ? n.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+    : "---";
 
-const PortfolioSummary = ({ portfolio, loading }: { portfolio: any, loading: boolean }) => (
-  <div className="welloh-card flex flex-col h-full overflow-hidden border-cyan-500/20">
-    <div className="p-6">
-      <p className="welloh-label text-cyan-500/80 mb-1">Portfolio Value</p>
-      <h2 className="welloh-value-xl mb-2">
-        {loading ? <span className="animate-pulse">---</span> : `$${fmt(portfolio?.totalValue)}`}
-      </h2>
-      <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black ${(portfolio?.totalGainLoss ?? 0) >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-        {(portfolio?.totalGainLoss ?? 0) >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-        {portfolio?.totalGainLossPct?.toFixed(2) ?? '0.00'}% ALL TIME
+// ────────────────────────────────────────────────────────────
+// PORTFOLIO CARD
+// ────────────────────────────────────────────────────────────
+const PortfolioCard = ({
+  portfolio,
+  loading,
+}: {
+  portfolio: any;
+  loading: boolean;
+}) => (
+  <div className="bg-card border border-border rounded-xl p-5 h-full flex flex-col">
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-sm font-medium text-muted-foreground">
+        Portfolio Value
+      </h3>
+      <Activity size={16} className="text-muted-foreground" />
+    </div>
+
+    <div className="mb-4">
+      <p className="text-3xl font-semibold tracking-tight text-foreground">
+        {loading ? (
+          <span className="animate-pulse">---</span>
+        ) : (
+          `$${fmt(portfolio?.totalValue)}`
+        )}
+      </p>
+      <div
+        className={cn(
+          "inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-md text-xs font-medium",
+          (portfolio?.totalGainLoss ?? 0) >= 0
+            ? "bg-accent/10 text-accent"
+            : "bg-destructive/10 text-destructive"
+        )}
+      >
+        {(portfolio?.totalGainLoss ?? 0) >= 0 ? (
+          <ArrowUpRight size={14} />
+        ) : (
+          <ArrowDownRight size={14} />
+        )}
+        {portfolio?.totalGainLossPct?.toFixed(2) ?? "0.00"}% all time
       </div>
     </div>
 
-    <div className="flex-1 overflow-y-auto px-6 py-2 space-y-6 custom-scrollbar">
-      <div>
-        <span className="welloh-label text-[9px] opacity-40 block mb-3">Capitals</span>
-        <div className="space-y-3">
-          <div className="flex justify-between items-center bg-white/[0.02] p-3 rounded-xl border border-white/5">
-            <div className="flex items-center gap-2"><Wallet size={12} className="text-slate-500" /> <span className="text-[11px] text-slate-400 uppercase font-black">Cash</span></div>
-            <span className="text-white text-xs font-bold font-mono">${fmt(portfolio?.cashBalance)}</span>
-          </div>
-          <div className="flex justify-between items-center bg-white/[0.02] p-3 rounded-xl border border-white/5">
-            <div className="flex items-center gap-2"><Briefcase size={12} className="text-slate-500" /> <span className="text-[11px] text-slate-400 uppercase font-black">Holdings</span></div>
-            <span className="text-white text-xs font-bold font-mono">${fmt(portfolio?.holdingsValue)}</span>
-          </div>
+    <div className="flex-1 space-y-3">
+      <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+        <div className="flex items-center gap-2">
+          <Wallet size={14} className="text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Cash</span>
         </div>
+        <span className="text-sm font-medium font-mono text-foreground">
+          ${fmt(portfolio?.cashBalance)}
+        </span>
       </div>
-
-      <div>
-        <span className="welloh-label text-[9px] opacity-40 block mb-3">Statistics</span>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-center">
-            <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Win Rate</p>
-            <p className="welloh-green text-sm font-black">{portfolio?.winRate ?? 0}%</p>
-          </div>
-          <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-center">
-            <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Trades</p>
-            <p className="text-white text-sm font-black">{portfolio?.totalTrades ?? 0}</p>
-          </div>
+      <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+        <div className="flex items-center gap-2">
+          <Briefcase size={14} className="text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Holdings</span>
         </div>
+        <span className="text-sm font-medium font-mono text-foreground">
+          ${fmt(portfolio?.holdingsValue)}
+        </span>
+      </div>
+    </div>
+
+    <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-border">
+      <div className="text-center p-3 bg-secondary/30 rounded-lg">
+        <p className="text-xs text-muted-foreground mb-1">Win Rate</p>
+        <p className="text-lg font-semibold text-accent">
+          {portfolio?.winRate ?? 0}%
+        </p>
+      </div>
+      <div className="text-center p-3 bg-secondary/30 rounded-lg">
+        <p className="text-xs text-muted-foreground mb-1">Total Trades</p>
+        <p className="text-lg font-semibold text-foreground">
+          {portfolio?.totalTrades ?? 0}
+        </p>
       </div>
     </div>
   </div>
 );
 
-const TradingConsole = ({ ticker, exchange, refreshPortfolio }: { ticker: string, exchange: string, refreshPortfolio: () => void }) => {
-  const [activeTab, setActiveTab] = useState('chart');
+// ────────────────────────────────────────────────────────────
+// TRADING PANEL
+// ────────────────────────────────────────────────────────────
+const TradingPanel = ({
+  ticker,
+  exchange,
+  refreshPortfolio,
+}: {
+  ticker: string;
+  exchange: string;
+  refreshPortfolio: () => void;
+}) => {
+  const [activeTab, setActiveTab] = useState<"chart" | "history">("chart");
   const [candles, setCandles] = useState<any[]>([]);
   const [quote, setQuote] = useState<any>(null);
-  const [amount, setAmount] = useState('1');
-  const [orderType, setOrderType] = useState<'MARKET' | 'LIMIT' | 'STOP_LOSS' | 'TAKE_PROFIT' | 'OCO' | 'TRAILING_STOP'>('MARKET');
-  const [targetPrice, setTargetPrice] = useState('');
-  const [stopPrice, setStopPrice] = useState('');
+  const [amount, setAmount] = useState("1");
+  const [orderType, setOrderType] = useState<
+    "MARKET" | "LIMIT" | "STOP_LOSS" | "TAKE_PROFIT" | "OCO" | "TRAILING_STOP"
+  >("MARKET");
+  const [targetPrice, setTargetPrice] = useState("");
+  const [stopPrice, setStopPrice] = useState("");
   const [loading, setLoading] = useState(false);
   const { history, refresh: refreshHistory } = useHistory();
 
@@ -164,25 +293,27 @@ const TradingConsole = ({ ticker, exchange, refreshPortfolio }: { ticker: string
       try {
         const [cRes, qRes] = await Promise.all([
           fetch(`/api/stocks/candles?ticker=${ticker}`),
-          fetch(`/api/stocks/quote?ticker=${ticker}&exchange=${exchange}`)
+          fetch(`/api/stocks/quote?ticker=${ticker}&exchange=${exchange}`),
         ]);
         if (!cRes.ok || !qRes.ok) return;
         const [cData, qData] = await Promise.all([cRes.json(), qRes.json()]);
         setCandles(cData.candles || []);
         setQuote(qData);
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        console.error(e);
+      }
     };
     fetchMarket();
     const interval = setInterval(fetchMarket, 30000);
     return () => clearInterval(interval);
   }, [ticker, exchange]);
 
-  const placeOrder = async (side: 'BUY' | 'SELL') => {
+  const placeOrder = async (side: "BUY" | "SELL") => {
     setLoading(true);
     try {
-      const resp = await fetch('/api/trading/order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const resp = await fetch("/api/trading/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ticker,
           exchange,
@@ -190,67 +321,122 @@ const TradingConsole = ({ ticker, exchange, refreshPortfolio }: { ticker: string
           side,
           shares: parseFloat(amount),
           price: targetPrice ? parseFloat(targetPrice) : undefined,
-          stopPrice: stopPrice ? parseFloat(stopPrice) : undefined
-        })
+          stopPrice: stopPrice ? parseFloat(stopPrice) : undefined,
+        }),
       });
       const data = await resp.json();
       if (data.success) {
         refreshPortfolio();
         refreshHistory();
-      } else { alert(data.error); }
-    } catch (e) { alert("Execution error"); }
-    finally { setLoading(false); }
+      } else {
+        alert(data.error);
+      }
+    } catch (e) {
+      alert("Execution error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="welloh-card flex flex-col h-full overflow-hidden shadow-2xl relative">
+    <div className="bg-card border border-border rounded-xl flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/10">
-        <div className="flex items-center gap-4">
-          <div className="welloh-exchange-badge">{exchange}</div>
-          <div className="flex flex-col">
-            <h3 className="text-white font-black text-lg tracking-tighter uppercase leading-none">{ticker}</h3>
-            <span className={`text-[10px] font-black mt-1 ${(quote?.change ?? 0) >= 0 ? 'welloh-green' : 'text-red-500'}`}>
-              {quote?.price != null ? `$${fmt(quote.price)}` : '—'} {quote?.changePct != null ? `(${quote.changePct.toFixed(2)}%)` : ''}
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center gap-3">
+          <span className="px-2.5 py-1 bg-primary/10 text-primary text-xs font-medium rounded-md">
+            {exchange}
+          </span>
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">{ticker}</h3>
+            <span
+              className={cn(
+                "text-sm font-medium",
+                (quote?.change ?? 0) >= 0 ? "text-accent" : "text-destructive"
+              )}
+            >
+              {quote?.price != null ? `$${fmt(quote.price)}` : "---"}{" "}
+              {quote?.changePct != null ? `(${quote.changePct.toFixed(2)}%)` : ""}
             </span>
           </div>
         </div>
-        <div className="flex gap-1 bg-white/[0.03] p-1 rounded-xl border border-white/5">
-          {[
-            { id: 'chart', icon: BarChart2, label: 'Analysis' },
-            { id: 'history', icon: Clock, label: 'Logs' }
-          ].map(t => (
-            <button key={t.id} onClick={() => setActiveTab(t.id)}
-              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${activeTab === t.id ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'text-slate-500 hover:text-white'}`}>
-              <t.icon size={12} /> {t.label.toUpperCase()}
-            </button>
-          ))}
+
+        <div className="flex gap-1 p-1 bg-secondary rounded-lg">
+          <button
+            onClick={() => setActiveTab("chart")}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+              activeTab === "chart"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <BarChart2 size={14} />
+            Chart
+          </button>
+          <button
+            onClick={() => setActiveTab("history")}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+              activeTab === "history"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <History size={14} />
+            History
+          </button>
         </div>
       </div>
 
-      {/* Content Area */}
-      <div className="flex-1 relative min-h-0">
-        {activeTab === 'chart' ? (
-          <div className="absolute inset-0 p-6 bg-black/[0.15]">
+      {/* Content */}
+      <div className="flex-1 min-h-0 relative">
+        {activeTab === "chart" ? (
+          <div className="absolute inset-0 p-4">
             <CandlestickChart data={candles} />
           </div>
         ) : (
-          <div className="absolute inset-0 overflow-y-auto px-6 py-4 space-y-2 custom-scrollbar">
-            {history.length === 0 && <p className="text-slate-500 text-xs text-center mt-8">No transactions yet.</p>}
-            {history.map(tx => (
-              <div key={tx.id} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5">
+          <div className="absolute inset-0 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+            {history.length === 0 && (
+              <p className="text-muted-foreground text-sm text-center py-8">
+                No transactions yet
+              </p>
+            )}
+            {history.map((tx) => (
+              <div
+                key={tx.id}
+                className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg"
+              >
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${tx.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-                    {tx.type === 'BUY' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                  <div
+                    className={cn(
+                      "p-2 rounded-lg",
+                      tx.type === "BUY"
+                        ? "bg-accent/10 text-accent"
+                        : "bg-destructive/10 text-destructive"
+                    )}
+                  >
+                    {tx.type === "BUY" ? (
+                      <ArrowUpRight size={14} />
+                    ) : (
+                      <ArrowDownRight size={14} />
+                    )}
                   </div>
                   <div>
-                    <p className="text-white text-xs font-bold leading-none">{tx.ticker}</p>
-                    <p className="text-[9px] text-slate-500 mt-1 uppercase font-black">{new Date(tx.timestamp).toLocaleDateString()}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {tx.ticker}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(tx.timestamp).toLocaleDateString()}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-white text-xs font-mono font-black">${fmt(tx.price)}</p>
-                  <p className="text-[9px] text-slate-400 font-bold uppercase">{tx.shares} SHARES</p>
+                  <p className="text-sm font-mono font-medium text-foreground">
+                    ${fmt(tx.price)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {tx.shares} shares
+                  </p>
                 </div>
               </div>
             ))}
@@ -258,64 +444,87 @@ const TradingConsole = ({ ticker, exchange, refreshPortfolio }: { ticker: string
         )}
       </div>
 
-      {/* Trading Execution Bar */}
-      <div className="p-6 bg-black/20 border-t border-white/5 flex flex-col gap-4">
-        <div className="flex flex-wrap gap-4 items-end">
-          <div className="flex flex-col flex-1 min-w-[120px]">
-             <span className="text-[10px] uppercase font-black text-slate-500 mb-1">Order Type</span>
-             <select
-                value={orderType}
-                onChange={(e: any) => setOrderType(e.target.value)}
-                className="bg-white/5 text-[11px] font-black text-white p-2.5 rounded-xl border border-white/10 outline-none"
-             >
-                <option value="MARKET">MARKET</option>
-                <option value="LIMIT">LIMIT</option>
-                <option value="STOP_LOSS">STOP LOSS</option>
-                <option value="TAKE_PROFIT">TAKE PROFIT</option>
-                <option value="OCO">OCO</option>
-                <option value="TRAILING_STOP">TRAILING STOP</option>
-             </select>
+      {/* Trading Controls */}
+      <div className="p-4 border-t border-border bg-secondary/30">
+        <div className="flex flex-wrap gap-3 mb-4">
+          <div className="flex-1 min-w-[120px]">
+            <label className="text-xs text-muted-foreground mb-1.5 block">
+              Order Type
+            </label>
+            <select
+              value={orderType}
+              onChange={(e: any) => setOrderType(e.target.value)}
+              className="w-full bg-card text-sm text-foreground p-2.5 rounded-lg border border-border outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              <option value="MARKET">Market</option>
+              <option value="LIMIT">Limit</option>
+              <option value="STOP_LOSS">Stop Loss</option>
+              <option value="TAKE_PROFIT">Take Profit</option>
+              <option value="OCO">OCO</option>
+              <option value="TRAILING_STOP">Trailing Stop</option>
+            </select>
           </div>
 
-          {(orderType === 'LIMIT' || orderType === 'TAKE_PROFIT' || orderType === 'OCO' || orderType === 'TRAILING_STOP') && (
-            <div className="flex flex-col flex-1 min-w-[100px]">
-               <span className="text-[10px] uppercase font-black text-slate-500 mb-1">
-                 {orderType === 'TRAILING_STOP' ? 'Trailing Distance ($)' : 'Target Price'}
-               </span>
-               <input type="number" step="0.01" value={targetPrice} onChange={e => setTargetPrice(e.target.value)}
-                 placeholder={quote?.price?.toString()} className="bg-white/5 text-[11px] font-black text-white p-2.5 rounded-xl border border-white/10 outline-none" />
+          {(orderType === "LIMIT" ||
+            orderType === "TAKE_PROFIT" ||
+            orderType === "OCO" ||
+            orderType === "TRAILING_STOP") && (
+            <div className="flex-1 min-w-[100px]">
+              <label className="text-xs text-muted-foreground mb-1.5 block">
+                {orderType === "TRAILING_STOP" ? "Distance ($)" : "Target Price"}
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={targetPrice}
+                onChange={(e) => setTargetPrice(e.target.value)}
+                placeholder={quote?.price?.toString()}
+                className="w-full bg-card text-sm text-foreground p-2.5 rounded-lg border border-border outline-none focus:ring-2 focus:ring-primary/50"
+              />
             </div>
           )}
 
-          {(orderType === 'STOP_LOSS' || orderType === 'OCO') && (
-            <div className="flex flex-col flex-1 min-w-[100px]">
-               <span className="text-[10px] uppercase font-black text-slate-500 mb-1">Stop Price</span>
-               <input type="number" step="0.01" value={stopPrice} onChange={e => setStopPrice(e.target.value)}
-                 className="bg-white/5 text-[11px] font-black text-white p-2.5 rounded-xl border border-white/10 outline-none" />
+          {(orderType === "STOP_LOSS" || orderType === "OCO") && (
+            <div className="flex-1 min-w-[100px]">
+              <label className="text-xs text-muted-foreground mb-1.5 block">
+                Stop Price
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={stopPrice}
+                onChange={(e) => setStopPrice(e.target.value)}
+                className="w-full bg-card text-sm text-foreground p-2.5 rounded-lg border border-border outline-none focus:ring-2 focus:ring-primary/50"
+              />
             </div>
           )}
         </div>
 
-        {/* Execution Row */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-5 py-2.5 flex-shrink-0 transition-all focus-within:border-cyan-500/40">
-            <Briefcase size={14} className="text-slate-500" />
-            <div className="flex flex-col">
-              <span className="text-[8px] welloh-label opacity-40">Position Size</span>
-              <input type="number" value={amount} onChange={e => setAmount(e.target.value)}
-                className="bg-transparent text-white text-sm font-black outline-none w-20" />
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
+            <Briefcase size={14} className="text-muted-foreground" />
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="bg-transparent text-sm font-medium text-foreground outline-none w-16"
+              placeholder="Qty"
+            />
           </div>
-          <div className="flex-1 grid grid-cols-2 gap-3">
-            <button onClick={() => placeOrder('BUY')} disabled={loading}
-              className="flex items-center justify-center gap-2 h-12 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs transition-all shadow-xl shadow-emerald-500/20 disabled:opacity-50 uppercase tracking-widest">
-              {loading ? 'Processing...' : `Buy ${orderType !== 'MARKET' ? orderType : ''}`}
-            </button>
-            <button onClick={() => placeOrder('SELL')} disabled={loading}
-              className="flex items-center justify-center gap-2 h-12 rounded-xl bg-red-500 hover:bg-red-400 text-white font-black text-xs transition-all shadow-xl shadow-red-500/20 disabled:opacity-50 uppercase tracking-widest">
-              {loading ? 'Processing...' : `Sell ${orderType !== 'MARKET' ? orderType : ''}`}
-            </button>
-          </div>
+          <button
+            onClick={() => placeOrder("BUY")}
+            disabled={loading}
+            className="flex-1 h-10 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-sm transition-colors disabled:opacity-50"
+          >
+            {loading ? "Processing..." : "Buy"}
+          </button>
+          <button
+            onClick={() => placeOrder("SELL")}
+            disabled={loading}
+            className="flex-1 h-10 rounded-lg bg-destructive hover:bg-destructive/90 text-destructive-foreground font-medium text-sm transition-colors disabled:opacity-50"
+          >
+            {loading ? "Processing..." : "Sell"}
+          </button>
         </div>
       </div>
     </div>
@@ -323,7 +532,7 @@ const TradingConsole = ({ ticker, exchange, refreshPortfolio }: { ticker: string
 };
 
 // ────────────────────────────────────────────────────────────
-// SIDEBAR NAV CONFIG
+// NAV CONFIG
 // ────────────────────────────────────────────────────────────
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -338,192 +547,298 @@ const navItems = [
 ];
 
 const markets = [
-  { ticker: 'BTCUSDT', exchange: 'BINANCE', icon: '₿', name: 'Bitcoin' },
-  { ticker: 'AAPL', exchange: 'NYSE', icon: 'A', name: 'Apple' },
-  { ticker: 'TSLA', exchange: 'NASDAQ', icon: 'T', name: 'Tesla' },
-  { ticker: 'EURUSD', exchange: 'FOREX', icon: '€', name: 'Euro/USD' },
-  { ticker: 'XAUUSD', exchange: 'FOREX', icon: 'G', name: 'Gold' }
+  { ticker: "BTCUSDT", exchange: "BINANCE", name: "Bitcoin", symbol: "BTC" },
+  { ticker: "AAPL", exchange: "NYSE", name: "Apple", symbol: "AAPL" },
+  { ticker: "TSLA", exchange: "NASDAQ", name: "Tesla", symbol: "TSLA" },
+  { ticker: "EURUSD", exchange: "FOREX", name: "Euro/USD", symbol: "EUR" },
+  { ticker: "XAUUSD", exchange: "FOREX", name: "Gold", symbol: "XAU" },
 ];
 
 // ────────────────────────────────────────────────────────────
-// ROOT VIEW
+// MAIN DASHBOARD
 // ────────────────────────────────────────────────────────────
 export default function PremiumDashboard() {
-  const [ticker, setTicker] = useState('AAPL');
-  const [exchange, setExchange] = useState('NYSE');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [ticker, setTicker] = useState("AAPL");
+  const [exchange, setExchange] = useState("NYSE");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { portfolio, loading, refresh } = usePortfolio();
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const { currentUser, logout } = useAuth();
 
-  // Derive user initials from email or name
-  const email = user?.primaryEmailAddress?.emailAddress ?? '';
-  const displayName = user?.fullName ?? email;
+  const email = currentUser?.email ?? "";
+  const displayName = currentUser?.fullName ?? email;
   const initials = displayName
-    ? displayName.trim().split(/\s+/).map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
-    : '?';
+    ? displayName
+        .trim()
+        .split(/\s+/)
+        .map((w: string) => w[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "?";
 
-  const filteredMarkets = markets.filter(m =>
-    m.ticker.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    m.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredMarkets = markets.filter(
+    (m) =>
+      m.ticker.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <>
-      <style jsx global>{`
-        .welloh-card { background: rgba(8, 12, 20, 0.8); border: 1px solid rgba(255,255,255,0.08); border-radius: 24px; backdrop-filter: blur(40px); }
-        .welloh-label { font-size: 10px; font-weight: 900; letter-spacing: 0.18em; text-transform: uppercase; color: rgb(148,163,184); }
-        .welloh-value-xl { font-size: 2rem; font-weight: 950; color: white; letter-spacing: -0.04em; }
-        .welloh-green { color: #00FFBB; }
-        .welloh-exchange-badge { background: rgba(6,182,212,0.15); border: 1px solid rgba(6,182,212,0.3); color: #22d3ee; font-size: 9px; font-weight: 950; letter-spacing: 0.15em; padding: 4px 12px; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-        .nav-tooltip { display: none; position: absolute; left: 100%; top: 50%; transform: translateY(-50%); margin-left: 12px; background: rgba(8,12,20,0.95); border: 1px solid rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 800; color: white; white-space: nowrap; z-index: 999; }
-        .nav-item:hover .nav-tooltip { display: block; }
-      `}</style>
+    <div className="fixed inset-0 flex bg-background text-foreground">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-      <div className="fixed inset-0 flex overflow-hidden bg-[#04060b] text-white">
-        {/* ── SIDEBAR ── */}
-        <aside className="w-20 border-r border-white/5 flex flex-col items-center py-6 gap-2 flex-shrink-0 bg-black/40 overflow-y-auto custom-scrollbar">
-          {/* Logo */}
-          <Link href="/dashboard" className="w-12 h-12 rounded-3xl bg-gradient-to-br from-cyan-400 to-indigo-600 flex items-center justify-center font-black shadow-2xl shadow-cyan-500/40 text-lg mb-4 flex-shrink-0">W</Link>
-          
-          {/* Nav Items */}
-          {navItems.map(item => (
-            <Link key={item.href} href={item.href}
-              className={`nav-item relative w-14 h-14 rounded-2xl flex flex-col items-center justify-center transition-all group ${item.href === '/dashboard' ? 'bg-cyan-500 text-black shadow-xl shadow-cyan-500/40' : 'text-slate-600 hover:text-white hover:bg-white/5'}`}
-            >
-              <item.icon size={20} />
-              <span className="nav-tooltip">{item.label}</span>
-              {item.href === '/dashboard' && <div className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-white rounded-r-full" />}
-            </Link>
-          ))}
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "fixed lg:static inset-y-0 left-0 z-50 w-64 bg-card border-r border-border flex flex-col transition-transform duration-200",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        )}
+      >
+        {/* Logo */}
+        <div className="h-16 flex items-center justify-between px-4 border-b border-border">
+          <Link href="/dashboard" className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center font-bold text-primary-foreground">
+              W
+            </div>
+            <span className="font-semibold text-foreground">Welloh</span>
+          </Link>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-2 text-muted-foreground hover:text-foreground"
+          >
+            <X size={20} />
+          </button>
+        </div>
 
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* Markets quick-switch */}
-          <div className="flex flex-col gap-2 w-full px-3">
-            {markets.map(m => (
-              <button key={m.ticker} onClick={() => { setTicker(m.ticker); setExchange(m.exchange); }}
-                title={m.name}
-                className={`nav-item relative w-14 h-14 rounded-2xl flex flex-col items-center justify-center transition-all group ${ticker === m.ticker ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'text-slate-600 hover:text-white hover:bg-white/5'}`}>
-                <span className="font-black text-base">{m.icon}</span>
-                <span className="text-[7px] font-black opacity-60 mt-0.5">{m.ticker.slice(0, 3)}</span>
-                <span className="nav-tooltip">{m.name}</span>
-              </button>
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 custom-scrollbar">
+          <div className="px-3 space-y-1">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                  item.href === "/dashboard"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                )}
+              >
+                <item.icon size={18} />
+                {item.label}
+              </Link>
             ))}
           </div>
 
-          {/* Sign out */}
-          <button onClick={() => signOut()} title="Sign Out"
-            className="mt-4 p-4 rounded-2xl text-slate-600 hover:text-red-500 transition-colors flex-shrink-0">
-            <LogOut size={20} />
-          </button>
-        </aside>
-
-        {/* ── MAIN CONTENT ── */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Header */}
-          <header className="h-16 border-b border-white/5 flex items-center px-10 justify-between flex-shrink-0 bg-black/10">
-            <div className="flex items-center gap-4">
-              <span className="welloh-label text-slate-500 opacity-60">Control Center</span>
-              <ChevronRight size={14} className="text-slate-800" />
-              <div className="flex items-center gap-2">
-                <span className="text-white font-black text-sm uppercase tracking-tighter">{exchange}</span>
-                <span className="text-slate-700 font-black">/</span>
-                <span className="text-cyan-400 font-black text-sm uppercase tracking-widest">{ticker}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-8">
-              {/* Market Search */}
-              <div className="hidden md:block relative z-50">
-                <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-5 py-2 group focus-within:border-cyan-500/40 transition-all">
-                  <Search size={14} className="text-slate-500 group-focus-within:text-cyan-500" />
-                  <input
-                    value={searchQuery}
-                    onChange={(e) => { setSearchQuery(e.target.value); setIsSearchOpen(true); }}
-                    onFocus={() => setIsSearchOpen(true)}
-                    onBlur={() => setTimeout(() => setIsSearchOpen(false), 200)}
-                    className="bg-transparent border-none text-[11px] text-white outline-none w-56 font-bold"
-                    placeholder="EXPLORE MARKETS..."
-                  />
-                </div>
-                {isSearchOpen && searchQuery && (
-                  <div className="absolute top-12 left-0 w-full bg-[#080c14] border border-white/10 rounded-xl overflow-hidden shadow-2xl backdrop-blur-xl">
-                    {filteredMarkets.length === 0 && (
-                      <p className="text-slate-500 text-xs text-center py-4">No results</p>
-                    )}
-                    {filteredMarkets.map(m => (
-                      <button
-                        key={m.ticker}
-                        onMouseDown={() => { setTicker(m.ticker); setExchange(m.exchange); setSearchQuery(''); setIsSearchOpen(false); }}
-                        className="w-full text-left px-4 py-3 hover:bg-white/10 flex items-center gap-3 transition-colors border-b border-white/5 last:border-0"
-                      >
-                       <span className="text-xs font-black">{m.icon}</span>
-                       <div className="flex flex-col">
-                         <span className="text-white text-[11px] font-bold">{m.ticker}</span>
-                         <span className="text-slate-500 text-[9px]">{m.name}</span>
-                       </div>
-                      </button>
-                    ))}
+          {/* Quick Markets */}
+          <div className="mt-6 px-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 mb-2">
+              Quick Trade
+            </p>
+            <div className="space-y-1">
+              {markets.map((m) => (
+                <button
+                  key={m.ticker}
+                  onClick={() => {
+                    setTicker(m.ticker);
+                    setExchange(m.exchange);
+                    setSidebarOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left",
+                    ticker === m.ticker
+                      ? "bg-accent/10 text-accent"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  )}
+                >
+                  <span className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-xs font-semibold">
+                    {m.symbol.slice(0, 2)}
+                  </span>
+                  <div>
+                    <p className="leading-none">{m.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {m.exchange}
+                    </p>
                   </div>
-                )}
-              </div>
-
-              {/* User info */}
-              <div className="flex items-center gap-3">
-                <button className="relative p-2.5 rounded-2xl hover:bg-white/5 transition-all text-slate-400 hover:text-white">
-                  <Bell size={20} />
-                  <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-cyan-500 rounded-full border-2 border-[#04060b]" />
                 </button>
-                {/* Avatar with initials + email */}
-                <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-3 py-1.5">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center font-black text-xs text-white shadow-lg">
-                    {initials}
-                  </div>
-                  <div className="flex flex-col hidden md:flex">
-                    <span className="text-white text-[10px] font-bold leading-none max-w-[120px] truncate">{displayName}</span>
-                    {email && email !== displayName && (
-                      <span className="text-slate-500 text-[8px] leading-none mt-0.5 max-w-[120px] truncate">{email}</span>
-                    )}
-                  </div>
-                </div>
+              ))}
+            </div>
+          </div>
+        </nav>
+
+        {/* User */}
+        <div className="p-4 border-t border-border">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
+              {initials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">
+                {displayName}
+              </p>
+              {email && email !== displayName && (
+                <p className="text-xs text-muted-foreground truncate">{email}</p>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={() => logout()}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            <LogOut size={16} />
+            Sign out
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <header className="h-16 flex items-center justify-between px-4 lg:px-6 border-b border-border bg-card/50 backdrop-blur-sm shrink-0">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 text-muted-foreground hover:text-foreground"
+            >
+              <Menu size={20} />
+            </button>
+            <div className="hidden sm:flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Trading</span>
+              <ChevronRight size={14} className="text-muted-foreground" />
+              <span className="font-medium text-foreground">
+                {exchange} / {ticker}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Search */}
+            <div className="relative hidden md:block">
+              <div className="flex items-center gap-2 bg-secondary border border-border rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-primary/50 transition-all">
+                <Search size={16} className="text-muted-foreground" />
+                <input
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setIsSearchOpen(true);
+                  }}
+                  onFocus={() => setIsSearchOpen(true)}
+                  onBlur={() => setTimeout(() => setIsSearchOpen(false), 200)}
+                  className="bg-transparent text-sm text-foreground outline-none w-48 placeholder:text-muted-foreground"
+                  placeholder="Search markets..."
+                />
               </div>
-            </div>
-          </header>
-
-          {/* Main grid */}
-          <main className="flex-1 overflow-auto p-8 gap-8 flex flex-col custom-scrollbar" style={{ background: 'radial-gradient(circle at 10% 10%, rgba(6,182,212,0.05) 0%, transparent 40%)' }}>
-            <div className="flex gap-8 flex-1 min-h-0" style={{ minHeight: '520px' }}>
-              <div style={{ width: '300px' }} className="flex-shrink-0"><PortfolioSummary portfolio={portfolio} loading={loading} /></div>
-              <div className="flex-1 min-w-0"><TradingConsole ticker={ticker} exchange={exchange} refreshPortfolio={refresh} /></div>
-            </div>
-
-            {/* Market Sentinel Strip */}
-            <div className="welloh-card p-8 flex-shrink-0 overflow-hidden relative">
-              <div className="absolute top-0 right-0 p-12 opacity-[0.03] rotate-12"><Activity size={200} className="text-white" /></div>
-              <div className="relative z-10">
-                <span className="welloh-label mb-8 block text-cyan-500/40">Market Sentinel Stream</span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-                  {markets.map(m => (
-                    <button key={m.ticker + '_grid'} onClick={() => { setTicker(m.ticker); setExchange(m.exchange); }}
-                      className={`p-5 rounded-3xl border transition-all text-left flex items-center gap-5 ${ticker === m.ticker ? 'bg-cyan-500/10 border-cyan-500/40 shadow-2xl shadow-cyan-500/10 scale-105' : 'bg-white/[0.03] border-white/5 hover:border-white/20 hover:bg-white/[0.06]'}`}>
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shadow-inner ${ticker === m.ticker ? 'bg-cyan-500 text-black' : 'bg-white/5 text-slate-500'}`}>{m.icon}</div>
+              {isSearchOpen && searchQuery && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-50">
+                  {filteredMarkets.length === 0 && (
+                    <p className="text-muted-foreground text-sm text-center py-4">
+                      No results
+                    </p>
+                  )}
+                  {filteredMarkets.map((m) => (
+                    <button
+                      key={m.ticker}
+                      onMouseDown={() => {
+                        setTicker(m.ticker);
+                        setExchange(m.exchange);
+                        setSearchQuery("");
+                        setIsSearchOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-secondary flex items-center gap-3 transition-colors border-b border-border last:border-0"
+                    >
+                      <span className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-xs font-semibold">
+                        {m.symbol.slice(0, 2)}
+                      </span>
                       <div>
-                        <p className="text-[9px] welloh-label opacity-40 mb-1">{m.exchange}</p>
-                        <p className="text-white font-black text-sm tracking-tight">{m.name}</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {m.ticker}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{m.name}</p>
                       </div>
                     </button>
                   ))}
                 </div>
-              </div>
+              )}
             </div>
-          </main>
-        </div>
+
+            {/* Notifications */}
+            <button className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+              <Bell size={20} />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full" />
+            </button>
+
+            {/* Settings */}
+            <button className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+              <Settings size={20} />
+            </button>
+          </div>
+        </header>
+
+        {/* Main Grid */}
+        <main className="flex-1 overflow-auto p-4 lg:p-6 custom-scrollbar">
+          <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-6 mb-6">
+            <PortfolioCard portfolio={portfolio} loading={loading} />
+            <div className="min-h-[480px]">
+              <TradingPanel
+                ticker={ticker}
+                exchange={exchange}
+                refreshPortfolio={refresh}
+              />
+            </div>
+          </div>
+
+          {/* Market Grid */}
+          <div className="bg-card border border-border rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-muted-foreground">
+                Market Overview
+              </h3>
+              <Activity size={16} className="text-muted-foreground" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+              {markets.map((m) => (
+                <button
+                  key={m.ticker}
+                  onClick={() => {
+                    setTicker(m.ticker);
+                    setExchange(m.exchange);
+                  }}
+                  className={cn(
+                    "flex items-center gap-3 p-4 rounded-lg border transition-all text-left",
+                    ticker === m.ticker
+                      ? "bg-primary/5 border-primary/30"
+                      : "bg-secondary/30 border-border hover:border-muted-foreground"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "w-10 h-10 rounded-lg flex items-center justify-center text-sm font-semibold",
+                      ticker === m.ticker
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-muted-foreground"
+                    )}
+                  >
+                    {m.symbol.slice(0, 2)}
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">{m.exchange}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {m.name}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </main>
       </div>
-    </>
+    </div>
   );
 }

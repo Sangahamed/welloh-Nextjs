@@ -1,7 +1,9 @@
+"use client";
+
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useClerk } from "@clerk/nextjs";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   LayoutDashboard, 
   TrendingUp, 
@@ -17,7 +19,17 @@ import {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = usePathname();
-  const { signOut } = useClerk();
+  const router = useRouter();
+  const { logout } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await logout();
+      router.push('/sign-in');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -33,8 +45,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full bg-background dark overflow-hidden">
-        <Sidebar className="border-r border-border bg-sidebar h-full">
+      <div className="flex h-screen w-full bg-background overflow-hidden">
+        <Sidebar className="border-r border-border bg-card h-full">
           <SidebarHeader className="p-4 border-b border-border">
             <div className="flex items-center gap-2 font-bold text-xl text-primary">
               <TrendingUp className="w-6 h-6" />
@@ -62,7 +74,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   ))}
                   <SidebarMenuItem className="mt-4">
                     <SidebarMenuButton 
-                      onClick={() => signOut()}
+                      onClick={handleSignOut}
                       className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                     >
                       <LogOut className="w-4 h-4" />

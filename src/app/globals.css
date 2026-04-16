@@ -1,140 +1,111 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0d0d0d;
-  --foreground: #ffffff;
-  --neon-cyan: #00ffff;
-  --neon-magenta: #ff00ff;
-  --neon-violet: #a855f7;
-  --neon-yellow: #ffff00;
-  --neon-blue: #0080ff;
-  --neon-purple: #8000ff;
-  --neon-green: #00ff00;
-  --neon-red: #ff0000;
-  --dark-900: #0a0a0a;
-  --dark-800: #111111;
-  --dark-700: #1a1a1a;
-  --dark-600: #222222;
-  --glow-cyan: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff;
-  --glow-magenta: 0 0 10px #ff00ff, 0 0 20px #ff00ff, 0 0 30px #ff00ff;
-  --glow-yellow: 0 0 10px #ffff00, 0 0 20px #ffff00, 0 0 30px #ffff00;
-  --glow-blue: 0 0 10px #0080ff, 0 0 20px #0080ff, 0 0 30px #0080ff;
-  --glow-purple: 0 0 10px #8000ff, 0 0 20px #8000ff, 0 0 30px #8000ff;
-  --glow-green: 0 0 10px #00ff00, 0 0 20px #00ff00, 0 0 30px #00ff00;
-  --glow-red: 0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000;
+  --background: #0a0a0b;
+  --foreground: #fafafa;
+  --card: #111113;
+  --card-foreground: #fafafa;
+  --popover: #111113;
+  --popover-foreground: #fafafa;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #1c1c1f;
+  --secondary-foreground: #fafafa;
+  --muted: #18181b;
+  --muted-foreground: #71717a;
+  --accent: #10b981;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #27272a;
+  --input: #27272a;
+  --ring: #3b82f6;
+  --radius: 0.75rem;
+  
+  /* Custom tokens */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --info: #3b82f6;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius: var(--radius);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --color-neon-cyan: var(--neon-cyan);
-  --color-neon-magenta: var(--neon-magenta);
-  --color-neon-violet: var(--neon-violet);
-  --color-neon-green: var(--neon-green);
-  --color-neon-blue: var(--neon-blue);
-  --color-neon-purple: var(--neon-purple);
-  --color-neon-yellow: var(--neon-yellow);
-  --color-dark-900: var(--dark-900);
-  --color-dark-800: var(--dark-800);
-  --color-dark-700: var(--dark-700);
-  --color-dark-600: var(--dark-600);
 }
 
 body {
-  background: linear-gradient(135deg, var(--background) 0%, #1a1a1a 50%, #0a0a0a 100%);
+  background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  perspective: 1000px;
-  overflow-x: hidden;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
-/* Animations */
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+/* Subtle animations */
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 .animate-fade-in {
-  animation: fade-in 0.6s ease-out forwards;
+  animation: fade-in 0.3s ease-out forwards;
 }
 
-@keyframes fade-in-up {
+@keyframes slide-up {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
-.animate-fade-in-up {
-  animation: fade-in-up 0.6s ease-out forwards;
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out forwards;
 }
 
-@keyframes slide-down {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Card hover effect */
+.card-hover {
+  transition: all 0.2s ease;
 }
-.animate-slide-down {
-  animation: slide-down 0.3s ease-out forwards;
+.card-hover:hover {
+  background: var(--secondary);
+  border-color: var(--border);
 }
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-.animate-float {
-  animation: float 4s ease-in-out infinite;
-}
-
-/* Pulsing glow */
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 5px currentColor; }
-  50% { box-shadow: 0 0 20px currentColor, 0 0 30px currentColor; }
-}
-
-.pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
-
-/* Neon glow utilities */
-.text-neon-cyan { color: var(--neon-cyan); }
-.text-neon-magenta { color: var(--neon-magenta); }
-.text-neon-violet { color: var(--neon-violet); }
-.text-neon-green { color: var(--neon-green); }
-
-.bg-neon-cyan\/10 { background-color: rgba(0, 255, 255, 0.1); }
-.bg-neon-magenta\/10 { background-color: rgba(255, 0, 255, 0.1); }
-.bg-neon-violet\/10 { background-color: rgba(168, 85, 247, 0.1); }
-.bg-neon-green\/10 { background-color: rgba(0, 255, 0, 0.1); }
-
-.border-neon-cyan\/30 { border-color: rgba(0, 255, 255, 0.3); }
-.border-neon-magenta\/30 { border-color: rgba(255, 0, 255, 0.3); }
-.border-neon-violet\/30 { border-color: rgba(168, 85, 247, 0.3); }
-.border-neon-green\/30 { border-color: rgba(0, 255, 0, 0.3); }
-
-.glass-card {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.text-glow-cyan { text-shadow: var(--glow-cyan); }
-.text-glow-magenta { text-shadow: var(--glow-magenta); }
-
-/* 3D card effect */
-.card-3d {
-  transform-style: preserve-3d;
-  transition: transform 0.3s ease;
-}
-
-.card-3d:hover {
-  transform: rotateX(5deg) rotateY(5deg) translateZ(20px);
-}
-
