@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import {
   Search,
@@ -564,11 +564,10 @@ export default function PremiumDashboard() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { portfolio, loading, refresh } = usePortfolio();
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const { currentUser, logout } = useAuth();
 
-  const email = user?.primaryEmailAddress?.emailAddress ?? "";
-  const displayName = user?.fullName ?? email;
+  const email = currentUser?.email ?? "";
+  const displayName = currentUser?.fullName ?? email;
   const initials = displayName
     ? displayName
         .trim()
@@ -690,7 +689,7 @@ export default function PremiumDashboard() {
             </div>
           </div>
           <button
-            onClick={() => signOut()}
+            onClick={() => logout()}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
             <LogOut size={16} />

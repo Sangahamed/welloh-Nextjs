@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useRouter, usePathname } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   TrendingUp,
@@ -25,26 +24,34 @@ import MentorAIBubble from "@/components/MentorAIBubble";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = usePathname();
-  const { signOut } = useClerk();
-  const { isLoaded, user } = useUser();
+  const { isLoaded, currentUser, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoaded && !user) {
+    if (isLoaded && !currentUser) {
       router.push('/sign-in');
     }
-  }, [isLoaded, user, router]);
+  }, [isLoaded, currentUser, router]);
 
-  // While auth state is loading or user is not present, show spinner / avoid rendering protected UI
-  if (!isLoaded || !user) {
+  const handleSignOut = async () => {
+    try {
+      await logout();
+      router.push('/sign-in');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  // While auth state is loading or user is not present, show spinner
+  if (!isLoaded || !currentUser) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-[#00F5A0] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
-  // Dashboard uses its own full-screen layout with its own sidebar — bypass this wrapper
+  // Dashboard uses its own full-screen layout with its own sidebar
   if (location === "/dashboard") {
     return (
       <>
@@ -70,8 +77,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full bg-background dark overflow-hidden">
-        <Sidebar className="border-r border-border bg-sidebar h-full">
+      <div className="flex h-screen w-full bg-background overflow-hidden">
+        <Sidebar className="border-r border-border bg-card h-full">
           <SidebarHeader className="p-4 border-b border-border">
             <div className="flex items-center gap-2 font-bold text-xl text-primary">
               <TrendingUp className="w-6 h-6" />
@@ -99,7 +106,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   ))}
                   <SidebarMenuItem className="mt-4">
                     <SidebarMenuButton
-                      onClick={() => signOut()}
+                      onClick={handleSignOut}
                       className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                     >
                       <LogOut className="w-4 h-4" />

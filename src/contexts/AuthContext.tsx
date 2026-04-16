@@ -212,5 +212,9 @@ export const useAuth = () => {
     if (context === undefined) {
         throw new Error('useAuth must be used within an AuthProvider');
     }
-    return context;
+    // Provide isLoaded as the inverse of isLoading for compatibility
+    return {
+        ...context,
+        isLoaded: !context.isLoading,
+    };
 };
