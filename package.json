@@ -2,6 +2,7 @@
   "name": "nextjs-app",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -75,7 +76,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/supertest": "^7.2.0",
-    "drizzle-kit": "^0.18.1",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "jest-environment-jsdom": "^30.3.0",
