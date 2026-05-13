@@ -1,48 +1,31 @@
-import { getUserId } from "@/lib/auth-utils";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "@workspace/db";
-import {
-  portfoliosTable,
-  holdingsTable,
-  transactionsTable,
-} from "@workspace/db";
+import { portfoliosTable, holdingsTable, transactionsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { generateStockQuote, findStock } from "@/lib/stockData";
+import { getApiAuth, unauthorizedResponse } from '@/lib/api-auth';
 
 async function ensurePortfolio(userId: string) {
-  let portfolio = await db.query.portfoliosTable.findFirst({
-    where: eq(portfoliosTable.userId, userId),
-  });
+  let portfolio = await db.query.portfoliosTable.findFirst({ where: eq(portfoliosTable.userId, userId) });
   if (!portfolio) {
-    const [newPortfolio] = await db
-      .insert(portfoliosTable)
-      .values({ 
-        userId, 
-        name: "Main Portfolio",
-        currentBalance: "100000", 
-        initialBalance: "100000" 
-      })
-      .returning();
-    portfolio = newPortfolio;
+    const [p] = await db.insert(portfoliosTable).values({
+      userId, name: "Main Portfolio", currentBalance: "100000", initialBalance: "100000",
+    }).returning();
+    portfolio = p;
   }
   return portfolio;
 }
 
 export async function GET() {
   try {
-    const userId = await getUserId();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await getApiAuth();
+    if (!auth) return unauthorizedResponse();
+    const { userId } = auth;
 
     const portfolio = await ensurePortfolio(userId);
-    const holdings = await db.query.holdingsTable.findMany({
-      where: eq(holdingsTable.portfolioId, portfolio.id),
-    });
-    const transactions = await db.query.transactionsTable.findMany({
-      where: eq(transactionsTable.portfolioId, portfolio.id),
-    });
+    const holdings = await db.query.holdingsTable.findMany({ where: eq(holdingsTable.portfolioId, portfolio.id) });
+    const transactions = await db.query.transactionsTable.findMany({ where: eq(transactionsTable.portfolioId, portfolio.id) });
 
     const currentBalance = parseFloat(portfolio.currentBalance || "0");
     const initialBalance = parseFloat(portfolio.initialBalance || "0");
@@ -59,19 +42,12 @@ export async function GET() {
     const totalGainLoss = totalValue - initialBalance;
     const totalGainLossPct = initialBalance > 0 ? (totalGainLoss / initialBalance) * 100 : 0;
 
-    // Calculate win rate from sell transactions
-    const sells = transactions.filter((t) => t.transactionType?.toUpperCase() === "SELL");
+    const sells = transactions.filter(t => t.transactionType?.toUpperCase() === "SELL");
     let wins = 0;
     for (const sell of sells) {
-      // Find the average purchase price for this symbol
-      const buys = transactions.filter(
-        (t) =>
-          t.transactionType?.toUpperCase() === "BUY" &&
-          t.symbol === sell.symbol
-      );
+      const buys = transactions.filter(t => t.transactionType?.toUpperCase() === "BUY" && t.symbol === sell.symbol);
       if (buys.length > 0) {
-        const avgBuyPrice =
-          buys.reduce((sum, b) => sum + parseFloat(b.price || "0"), 0) / buys.length;
+        const avgBuyPrice = buys.reduce((sum, b) => sum + parseFloat(b.price || "0"), 0) / buys.length;
         if (parseFloat(sell.price || "0") > avgBuyPrice) wins++;
       }
     }
@@ -91,9 +67,6 @@ export async function GET() {
     });
   } catch (err: any) {
     logger.error({ err }, "Error fetching portfolio summary");
-    return NextResponse.json(
-      { error: "Internal server error", details: err.message },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Internal server error", details: err.message }, { status: 500 });
   }
 }

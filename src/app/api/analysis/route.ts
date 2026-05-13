@@ -1,16 +1,15 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@workspace/db";
 import { analysesTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { logger } from '@/lib/logger';
+import { getApiAuth, unauthorizedResponse } from '@/lib/api-auth';
 
 export async function GET() {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await getApiAuth();
+    if (!auth) return unauthorizedResponse();
+    const { userId } = auth;
 
     const analyses = await db.query.analysesTable.findMany({
       where: eq(analysesTable.userId, userId),
@@ -26,62 +25,32 @@ export async function GET() {
         summary: a.summary,
         data: a.data,
         createdAt: a.createdAt,
-      })),
+      }))
     );
   } catch (err) {
     logger.error({ err }, "Error fetching analyses");
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await getApiAuth();
+    if (!auth) return unauthorizedResponse();
+    const { userId } = auth;
 
-    const { ticker, companyName, analysisType, summary, data } =
-      await request.json();
+    const { ticker, companyName, analysisType, summary, data } = await request.json();
     if (!ticker || !companyName || !analysisType || !summary) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const [analysis] = await db
-      .insert(analysesTable)
-      .values({
-        userId,
-        ticker,
-        companyName,
-        analysisType,
-        summary,
-        data: data || null,
-      })
-      .returning();
+    const [analysis] = await db.insert(analysesTable).values({
+      userId, ticker, companyName, analysisType, summary, data: data || null,
+    }).returning();
 
-    return NextResponse.json(
-      {
-        id: analysis.id,
-        ticker: analysis.ticker,
-        companyName: analysis.companyName,
-        analysisType: analysis.analysisType,
-        summary: analysis.summary,
-        data: analysis.data,
-        createdAt: analysis.createdAt,
-      },
-      { status: 201 },
-    );
+    return NextResponse.json({ id: analysis.id, ticker: analysis.ticker, companyName: analysis.companyName, analysisType: analysis.analysisType, summary: analysis.summary, data: analysis.data, createdAt: analysis.createdAt }, { status: 201 });
   } catch (err) {
     logger.error({ err }, "Error saving analysis");
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

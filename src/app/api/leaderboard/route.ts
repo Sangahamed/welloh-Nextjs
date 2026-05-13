@@ -1,52 +1,35 @@
-import { getUserId } from "@/lib/auth-utils";
+
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@workspace/db";
 import { portfoliosTable, transactionsTable, profilesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from '@/lib/logger';
+import { getApiAuth, unauthorizedResponse } from '@/lib/api-auth';
 
 async function computeLeaderboard(limit: number) {
   const portfolios = await db.query.portfoliosTable.findMany({ limit: 100 });
   const entries = [];
 
   for (const p of portfolios) {
-    const user = await db.query.profilesTable.findFirst({
-      where: eq(profilesTable.id, p.userId),
-    });
-    const transactions = await db.query.transactionsTable.findMany({
-      where: eq(transactionsTable.portfolioId, p.id),
-    });
+    const user = await db.query.profilesTable.findFirst({ where: eq(profilesTable.id, p.userId) });
+    const transactions = await db.query.transactionsTable.findMany({ where: eq(transactionsTable.portfolioId, p.id) });
 
     const currentBalance = parseFloat(p.currentBalance || "0");
     const initialBalance = parseFloat(p.initialBalance || "0");
-
-    // Rough portfolio value estimate
     const totalReturn = currentBalance - initialBalance;
     const returnPct = initialBalance > 0 ? (totalReturn / initialBalance) * 100 : 0;
 
-    const sells = transactions.filter((t) => t.transactionType?.toUpperCase() === "SELL");
+    const sells = transactions.filter(t => t.transactionType?.toUpperCase() === "SELL");
     let wins = 0;
     for (const sell of sells) {
-      const buys = transactions.filter(
-        (t) =>
-          t.transactionType?.toUpperCase() === "BUY" &&
-          t.symbol === sell.symbol
-      );
+      const buys = transactions.filter(t => t.transactionType?.toUpperCase() === "BUY" && t.symbol === sell.symbol);
       if (buys.length > 0) {
-        const avgBuyPrice =
-          buys.reduce((sum, b) => sum + parseFloat(b.price || "0"), 0) / buys.length;
+        const avgBuyPrice = buys.reduce((sum, b) => sum + parseFloat(b.price || "0"), 0) / buys.length;
         if (parseFloat(sell.price || "0") > avgBuyPrice) wins++;
       }
     }
     const winRate = sells.length > 0 ? (wins / sells.length) * 100 : 50;
-
-    // Simplified Sharpe ratio simulation
-    const sharpeRatio =
-      returnPct > 0
-        ? parseFloat((returnPct / 15 + Math.random() * 0.5).toFixed(2))
-        : parseFloat((returnPct / 20).toFixed(2));
-
-    // Composite score: PnL 50% + WinRate 20% + Sharpe 30%
+    const sharpeRatio = returnPct > 0 ? parseFloat((returnPct / 15 + Math.random() * 0.5).toFixed(2)) : parseFloat((returnPct / 20).toFixed(2));
     const score = returnPct * 0.5 + winRate * 0.2 + sharpeRatio * 30;
 
     entries.push({
@@ -68,10 +51,8 @@ async function computeLeaderboard(limit: number) {
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = await getUserId();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await getApiAuth();
+    if (!auth) return unauthorizedResponse();
 
     const url = new URL(request.url);
     const limit = parseInt(url.searchParams.get("limit") || "50");
@@ -79,9 +60,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(entries);
   } catch (err) {
     logger.error({ err }, "Error fetching leaderboard");
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+// --- leaderboard/me/route.ts (same file for reference) ---
+// export async function GET() {
+//   const auth = await getApiAuth();
+//   if (!auth) return unauthorizedResponse();
+//   const { userId } = auth;
+//   const entries = await computeLeaderboard(200);
+//   const me = entries.find(e => e.userId === userId);
+//   if (!me) return NextResponse.json({ rank: entries.length + 1, userId, displayName: "You", score: 0, totalReturn: 0, returnPct: 0, winRate: 0, totalTrades: 0, sharpeRatio: 0 });
+//   return NextResponse.json(me);
+// }

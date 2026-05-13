@@ -1,45 +1,84 @@
 import { NextResponse } from 'next/server';
-import { getUserId } from '@/lib/auth-utils';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 export async function GET() {
   try {
-    const userId = await getUserId();
-    if (!userId) {
-      console.log('[SessionAPI] No userId found - user not authenticated');
+    const cookieStore = await cookies();
+
+    // Debug : lister les cookies Supabase présents
+    const allCookies = cookieStore.getAll();
+    const supabaseCookies = allCookies.filter(c =>
+      c.name.includes('supabase') || c.name.includes('sb-') || c.name.includes('welloh')
+    );
+    const hasCookies = supabaseCookies.length > 0;
+
+    if (!hasCookies) {
+      // Pas de cookies Supabase → utilisateur non connecté côté serveur
+      // Cela arrive si :
+      // 1. flowType:'pkce' est activé (tokens dans localStorage, pas cookies)
+      // 2. Le middleware n'a pas encore eu le temps d'écrire les cookies
+      console.log('[SessionAPI] Aucun cookie Supabase trouvé - session non disponible côté serveur');
       return NextResponse.json({ account: null });
     }
 
-    const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
+          getAll() { return cookieStore.getAll(); },
           setAll(cookiesToSet) {
             try {
               cookiesToSet.forEach(({ name, value, options }) =>
                 cookieStore.set(name, value, options)
               );
-            } catch {
-              // Ignore errors from Server Components
-            }
+            } catch { /* ignore in Server Components */ }
           },
         },
       }
     );
 
-    // Récupérer l'utilisateur auth et son email
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError) {
-      console.error('[SessionAPI] Erreur getUser:', userError);
-      return NextResponse.json({ error: userError.message }, { status: 500 });
+    // getUser() vérifie le JWT côté serveur Supabase (sécurisé)
+    let user = null;
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        if (
+          error.message === 'Auth session missing!' ||
+          error.message.includes('session missing') ||
+          error.message.includes('invalid JWT') ||
+          error.message.includes('token is expired')
+        ) {
+          return NextResponse.json({ account: null });
+        }
+        console.error('[SessionAPI] getUser error:', error.message);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      user = data.user;
+    } catch (e: any) {
+      if (e.message?.includes('Auth session missing')) {
+        return NextResponse.json({ account: null });
+      }
+      throw e;
     }
-    const email = user?.email || '';
+
+    // Fallback getSession() si getUser() retourne null
+    if (!user) {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session?.user) {
+          user = sessionData.session.user;
+        }
+      } catch { /* ignore */ }
+    }
+
+    if (!user) {
+      return NextResponse.json({ account: null });
+    }
+
+    const userId = user.id;
+    const email = user.email || '';
 
     // Récupérer le profil
     let { data: profile, error: profileError } = await supabase
@@ -53,49 +92,59 @@ export async function GET() {
       return NextResponse.json({ error: profileError.message }, { status: 500 });
     }
 
-    // Si pas de profil, le créer (le trigger devrait l'avoir fait, mais au cas où)
+    // Profil absent → créer (trigger peut avoir un délai)
     if (!profile) {
-      console.log(`[SessionAPI] Aucun profil pour ${userId}, création...`);
-      
-      const fullName = user?.user_metadata?.full_name || 'Utilisateur Welloh';
-      
+      const full_name =
+        user.user_metadata?.full_name ||
+        user.user_metadata?.display_name ||
+        'Trader';
+
       const { data: newProfile, error: insertError } = await supabase
         .from('profiles')
         .insert({
           id: userId,
-          full_name: fullName,
-          role: 'user'
+          full_name: full_name,
+          role: 'user',
+          league: 'bronze',
+          level: 1,
+          experience_points: 0,
         })
         .select()
         .single();
 
       if (insertError) {
-        console.error('[SessionAPI] Erreur création profil:', insertError);
-        return NextResponse.json({ error: 'Impossible de créer le profil: ' + insertError.message }, { status: 500 });
-      }
-      
-      profile = newProfile;
-      
-      // Créer aussi le portfolio s'il n'existe pas
-      const { data: existingPortfolio } = await supabase
-        .from('portfolios')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-      
-      if (!existingPortfolio) {
-        const { error: portfolioError } = await supabase
-          .from('portfolios')
-          .insert({
-            user_id: userId,
-            cash_balance: 100000,
-            initial_capital: 100000
-          });
-        
-        if (portfolioError) {
-          console.error('[SessionAPI] Erreur création portfolio:', portfolioError);
-          // Ne pas bloquer la connexion si le portfolio échoue
+        // Code 23505 = doublon (le trigger a créé entre temps) → re-fetch
+        if (insertError.code === '23505') {
+          const { data: existingProfile } = await supabase
+            .from('profiles').select('*').eq('id', userId).single();
+          profile = existingProfile;
+        } else {
+          console.error('[SessionAPI] Erreur création profil:', insertError);
+          return NextResponse.json(
+            { error: 'Impossible de créer le profil: ' + insertError.message },
+            { status: 500 }
+          );
         }
+      } else {
+        profile = newProfile;
+      }
+
+      // Créer portfolio si absent
+      const { data: existingPortfolio } = await supabase
+        .from('portfolios').select('id').eq('user_id', userId).single();
+      if (!existingPortfolio) {
+        await supabase.from('portfolios').insert({
+          user_id: userId, name: 'Main Portfolio',
+          cash_balance: 100000, initial_capital: 100000,
+          initial_balance: 100000, current_balance: 100000,
+        });
+      }
+
+      // Créer watchlist si absente
+      const { data: existingWatchlist } = await supabase
+        .from('watchlists').select('id').eq('user_id', userId).single();
+      if (!existingWatchlist) {
+        await supabase.from('watchlists').insert({ user_id: userId, name: 'default' });
       }
     }
 
@@ -103,46 +152,45 @@ export async function GET() {
       return NextResponse.json({ error: 'Profil introuvable' }, { status: 404 });
     }
 
-    // Récupérer le portfolio pour avoir les données financières
     const { data: portfolio } = await supabase
-      .from('portfolios')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
+      .from('portfolios').select('*').eq('user_id', userId).single();
 
-    // Construire l'objet UserAccount avec les colonnes réelles de la base de données
-    // Base de données actuelle: id, updated_at, full_name, role, is_suspended, is_verified, following_count, followers_count
-    const userAccount = {
-      id: profile.id,
-      email,
-      fullName: profile.full_name || 'Utilisateur',
-      avatarUrl: null, // Pas dans le schéma actuel
-      bio: null, // Pas dans le schéma actuel
-      country: null, // Pas dans le schéma actuel
-      institution: null, // Pas dans le schéma actuel
-      role: profile.role || 'user',
-      league: 'bronze', // Valeur par défaut
-      level: 1, // Valeur par défaut
-      experiencePoints: 0, // Valeur par défaut
-      totalProfitLoss: portfolio ? String(Number(portfolio.cash_balance) - Number(portfolio.initial_capital)) : '0.00',
-      totalTrades: 0, // Valeur par défaut
-      winRate: '0.00', // Valeur par défaut
-      analysisHistory: [],
-      alerts: [],
-      createdAt: profile.updated_at || new Date().toISOString(),
-      // Champs supplémentaires de la base de données réelle
-      isSuspended: profile.is_suspended || false,
-      isVerified: profile.is_verified || false,
-      followingCount: profile.following_count || 0,
-      followersCount: profile.followers_count || 0,
-      // Données portfolio
-      cashBalance: portfolio?.cash_balance || '100000.00',
-      initialCapital: portfolio?.initial_capital || '100000.00',
-    };
+    const fullName = profile.full_name || 'Utilisateur';
 
-    return NextResponse.json({ account: userAccount });
+    return NextResponse.json({
+      account: {
+        id: profile.id,
+        email,
+        fullName,
+        avatarUrl: profile.avatar_url || null,
+        bio: profile.bio || null,
+        country: profile.country || null,
+        institution: profile.institution || null,
+        role: profile.role || 'user',
+        league: profile.league || 'bronze',
+        level: profile.level || 1,
+        experiencePoints: profile.experience_points || 0,
+        totalProfitLoss: portfolio
+          ? String(
+              Number(portfolio.cash_balance ?? portfolio.current_balance ?? 100000)
+              - Number(portfolio.initial_capital ?? portfolio.initial_balance ?? 100000)
+            )
+          : '0.00',
+        totalTrades: profile.total_trades || 0,
+        winRate: String(profile.win_rate || '0.00'),
+        analysisHistory: [],
+        alerts: [],
+        createdAt: profile.created_at || profile.updated_at || new Date().toISOString(),
+        isSuspended: profile.is_suspended || false,
+        isVerified: profile.is_verified || false,
+        followingCount: profile.following_count || 0,
+        followersCount: profile.followers_count || 0,
+        cashBalance: String(portfolio?.cash_balance ?? portfolio?.current_balance ?? '100000.00'),
+        initialCapital: String(portfolio?.initial_capital ?? portfolio?.initial_balance ?? '100000.00'),
+      }
+    });
   } catch (err: any) {
-    console.error('Erreur route session:', err);
+    console.error('[SessionAPI] Erreur inattendue:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

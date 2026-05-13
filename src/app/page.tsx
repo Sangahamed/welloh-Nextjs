@@ -10,11 +10,11 @@ import Footer from "@/components/Footer";
 export default function Page() {
   const { isLoaded, currentUser } = useAuth();
   const router = useRouter();
-
   const isSignedIn = !!currentUser;
 
-  // Only redirect to dashboard if user is signed in
   useEffect(() => {
+    // Ne rediriger QUE quand isLoaded=true ET currentUser présent
+    // Évite une redirection prématurée pendant le chargement initial
     if (isLoaded && isSignedIn) {
       router.push('/dashboard');
     }
@@ -26,7 +26,7 @@ export default function Page() {
     else router.push(`/${view}`);
   };
 
-  // Show loading spinner only while checking auth
+  // Spinner pendant le chargement de l'auth
   if (!isLoaded) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -35,8 +35,8 @@ export default function Page() {
     );
   }
 
-  // If signed in, show loading while redirecting to dashboard
-  if (isSignedIn) {
+  // Spinner pendant la redirection vers /dashboard
+  if (isLoaded && isSignedIn) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -44,7 +44,7 @@ export default function Page() {
     );
   }
 
-  // Show landing page for non-authenticated users
+  // Page d'accueil pour utilisateurs non connectés
   return (
     <main className="min-h-screen bg-background text-foreground">
       <Header currentPage="landing" onNavigate={handleNavigate} />

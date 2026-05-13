@@ -4,24 +4,21 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  // We can't throw here in Next.js if we want it to build, so we'll just log or handle it gracefully
   console.warn("Missing Supabase environment variables. Check .env.local");
 }
 
 export const supabase = createClient(
-  supabaseUrl || "", 
+  supabaseUrl || "",
   supabaseAnonKey || "",
   {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
-      flowType: 'pkce',
+      // NE PAS utiliser flowType: 'pkce' avec Next.js SSR
+      // pkce stocke les tokens dans localStorage → serveur ne peut pas les lire
+      // Le flow par défaut utilise les cookies → compatible avec SSR/middleware
       storageKey: 'welloh_session_v1',
-      lockOptions: {
-        retryInterval: 100,
-        retryCount: 30,
-      }
     }
   }
 );

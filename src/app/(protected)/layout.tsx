@@ -3,23 +3,16 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
+import {
+  SidebarProvider, Sidebar, SidebarHeader, SidebarContent,
+  SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
+  SidebarMenu, SidebarMenuItem, SidebarMenuButton,
+} from "@/components/ui/sidebar";
 import Link from "next/link";
 import {
-  LayoutDashboard,
-  TrendingUp,
-  BrainCircuit,
-  MessageSquare,
-  Trophy,
-  GraduationCap,
-  User,
-  History,
-  Star,
-  LogOut,
-  LifeBuoy,
-  Activity
+  LayoutDashboard, TrendingUp, BrainCircuit, MessageSquare,
+  Trophy, GraduationCap, User, History, Star, LogOut, LifeBuoy, Activity,
 } from "lucide-react";
-
 import MentorAIBubble from "@/components/MentorAIBubble";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -28,6 +21,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    // Rediriger vers /sign-in si auth chargée ET pas d'utilisateur
     if (isLoaded && !currentUser) {
       router.push('/sign-in');
     }
@@ -42,7 +36,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // While auth state is loading or user is not present, show spinner
+  // Spinner pendant le chargement ou la redirection
   if (!isLoaded || !currentUser) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -51,7 +45,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Dashboard uses its own full-screen layout with its own sidebar
+  // Le dashboard utilise son propre layout fullscreen
   if (location === "/dashboard") {
     return (
       <>
@@ -73,6 +67,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { label: "System Health", href: "/health", icon: Activity },
     { label: "Learn", href: "/learn", icon: GraduationCap },
     { label: "Profile", href: "/profile", icon: User },
+    // Entrée admin uniquement pour les admins
+    ...(currentUser.role === 'admin' ? [{ label: "Admin", href: "/admin", icon: LayoutDashboard }] : []),
   ];
 
   return (
@@ -95,7 +91,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       <SidebarMenuButton
                         asChild
                         isActive={location === item.href}
-                        className={location === item.href ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent"}
+                        className={location === item.href
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-accent"}
                       >
                         <Link href={item.href} className="flex items-center gap-3">
                           <item.icon className="w-4 h-4" />
