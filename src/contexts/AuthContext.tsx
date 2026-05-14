@@ -62,6 +62,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .eq('id', supabaseUser.id)
         .single();
 
+      // Si le profil n'existe pas (base de données réinitialisée), forcer la déconnexion
+      if (profileError?.code === 'PGRST116') {
+        console.warn('[Auth] Profil introuvable - session orpheline détectée. Déconnexion forcée.');
+        await supabase.auth.signOut();
+        setCurrentUser(null);
+        setCurrentUserAccount(null);
+        setAccountRecoveryError(
+          "Votre session était invalide (base de données réinitialisée). Veuillez vous reconnecter ou créer un nouveau compte."
+        );
+        setIsLoading(false);
+        return;
+      }
+
       if (profileError) throw profileError;
 
       if (profile) {
